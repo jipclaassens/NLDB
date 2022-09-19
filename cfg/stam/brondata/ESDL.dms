@@ -1,0 +1,158 @@
+container ESDL
+{
+	container Nieuwbouw
+	{
+		// attribute<geometries/rdc> geometry_area_lvl_1 (poly) := /Brondata/ESDL/Parsed_ESDL_Nieuwbouw/area/asset/Geometry/lat
+	// /Brondata/ESDL/Parsed_ESDL_Nieuwbouw/area/area/area/Geometry/Point/lon
+	}
+	
+	parameter<string> ESDL_Nieuwbouw
+	:	StorageName = "%SourceDataDir%/ESDL/Havenstad_nieuwbouw_voorbeeld.esdl"
+	,	StorageType = "str";
+	parameter<string> ESDL_Restwarmte
+	:	StorageName = "%SourceDataDir%/ESDL/Restwarmte_Amsterdam.esdl"
+	,	StorageType = "str";
+	parameter<string> ESDL_Vesta
+	:	StorageName = "%SourceDataDir%/ESDL/S3c_LT3050_GooiEnVechtstreek.esdl"
+	,	StorageType = "str";
+	
+	container Parsed_ESDL_Nieuwbouw   := parse_xml(ESDL_Nieuwbouw, XMLschema);
+	container Parsed_ESDL_Restwarmte  := parse_xml(ESDL_Restwarmte, XMLschema);
+	container Parsed_ESDL_Vesta       := parse_xml(ESDL_Vesta, XMLschema);
+	
+	container XMLschema
+	{
+		unit<uint32> area
+		{
+			attribute<string> id;
+			attribute<string> name;
+			attribute<string> scope;
+			
+			unit<uint32> asset
+			{
+				attribute<string> id;
+				attribute<string> numberofbuildings;
+				attribute<string> name;
+				attribute<string> aggregated;
+				attribute<string> residentialBuildingType;
+				attribute<string> numberOfFloors;
+				attribute<string> buildingYear;
+				attribute<string> aggregationCount;
+				attribute<string> energyLabel;
+				
+				unit<uint32> geometry
+				{
+					attribute<string> CRS;
+					attribute<string> lat;
+					attribute<string> lon;
+				}
+				unit<uint32> asset
+				{
+					attribute<string> id;
+					attribute<string> name;
+					attribute<string> type;
+					attribute<string> lat;
+					attribute<string> lon;
+					
+					unit<uint32> geometry
+					{
+						attribute<string> CRS;
+						attribute<string> lat;
+						attribute<string> lon;
+					}
+					unit<uint32> port
+					{
+						attribute<string> id;
+						attribute<string> name;
+						attribute<string> connectedTo;
+					}
+				}
+			}
+			
+			unit<uint32> area
+			{
+				attribute<string> id;
+				attribute<string> name;
+				attribute<string> scope;
+				
+				unit<uint32> area
+				{
+					attribute<string> id;
+					attribute<string> name;
+					
+					unit<uint32> geometry
+					{
+						attribute<string> CRS;
+						
+						unit<uint32> point
+						{
+							attribute<string> lon;
+							attribute<string> lat;
+							attribute<fpoint> my_point := point(value(lon, float32), value(lat, float32), fpoint);
+						}
+					}
+				}
+				unit<uint32> asset
+				{
+					attribute<string> id;
+					attribute<string> numberofbuildings;
+					attribute<string> name;
+					attribute<string> aggregated;
+					
+					unit<uint32> asset
+					{
+						attribute<string> id;
+						attribute<string> name;
+						attribute<string> aggregated;
+						
+						unit<uint32> port
+						{
+							attribute<string> id;
+							attribute<string> name;
+							attribute<string> ConnectedTo;
+							
+							unit<uint32> profile
+							{
+								attribute<string> value;
+							}
+						}
+					}
+				}
+				
+				unit<uint32> KPIs
+				{
+					attribute<string> id;
+
+					unit<uint32> kpi
+					{
+						attribute<string> id;
+						attribute<string> name;
+						attribute<string> value;
+					}
+				}
+				unit<uint32> potential //residualHeatSourcePotential 
+				{
+					attribute<string> id;
+					attribute<string> originalIdInSource;
+					attribute<string> value;
+					attribute<string> type;
+					
+					unit<uint32> geometry
+					{
+						attribute<string> lat;
+						attribute<string> lon;
+					}
+					unit<uint32> dataSource
+					{
+						attribute<string> reference;
+					}
+					unit<uint32> QuantityAndUnit
+					{
+						attribute<string> reference;
+					}
+				}
+			}
+		}
+	}
+
+}

@@ -1,0 +1,279 @@
+container Alternatieve_BBG: Using = "eenheden"
+{
+	container BBG_groep := 
+		for_each_ne(
+			typeringen/BBG/name
+			, 'MakeBBGcatUnit('+quote(typeringen/BBG/name)+','+string(id(typeringen/BBG))+')'
+		);
+	
+	template MakeBBGcatUnit
+	{
+		///
+		parameter<string> BBG_cat;
+		parameter<uint32>  BBG_code;
+		///
+		
+		unit<uint32>  Cat := subset(Brondata/BRT/ReadFSS/LU/bbg_code == BBG_code[uint8])
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		,	FreeData   = "False"
+		, StorageName  = "='%LocalDataDir%/NLDB/BBG/'+BBG_cat+'.fss'"		
+		{
+			attribute<geometries/rdc>                      geometry_rd (poly)       := Brondata/BRT/ReadFSS/LU/geometry_rd[nr_OrgEntity];
+			attribute<typeringen/BRT/visualisatiecodes>    Visualisatiecodes_rel    := Brondata/BRT/ReadFSS/LU/Visualisatiecodes_rel[nr_OrgEntity];
+			attribute<typeringen/BBG>                      bbg_code                 := rjoin(visualisatiecodes_rel, id(typeringen/brt/visualisatiecodes), typeringen/brt/visualisatiecodes/bbg_code);
+			
+			attribute<NL_grid/domain>                      per_grid (NL_grid/Domain)                := geometry_rd[NL_grid/domain];
+			
+			container DistanceTo
+			{
+				unit<uint32>      segments                := arc2segm(../geometry_rd);
+				unit<uint32>      pointset                := dyna_point(segments/point, segments/nextpoint, value(100, m)), DialogType = "Map", DialogData = "point"{attribute<NL_grid/domain> grid_rel  := point[NL_grid/domain];}
+				attribute<m>      DistTo (NL_grid/domain) := GridDist(resistance, pointset/grid_rel, const(0, pointset, m));
+				attribute<m>      resistance (NL_grid/domain)	:= const(100,NL_grid/domain,m);
+			}
+		}
+	}
+		
+	unit<uint32> combine := 
+		union_unit(
+			  BBG_groep/semi_verhard_overig_terrein/Cat
+			, BBG_groep/overige_agrarisch_gebruik/Cat
+			, BBG_groep/bos/Cat
+			, BBG_groep/droog_natuurlijk_terrein/Cat
+			, BBG_groep/nat_natuurlijk_terrein/Cat
+			, BBG_groep/IJsselmeer_Markermeer/Cat
+			, BBG_groep/afgesloten_zeearm/Cat
+			, BBG_groep/Rijn_en_Maas/Cat
+			, BBG_groep/Randmeer/Cat
+			, BBG_groep/spaarbekkens/Cat
+			, BBG_groep/water_met_een_recreatieve_functie/Cat
+			, BBG_groep/water_met_delfstofwinningsfunctie/Cat
+			, BBG_groep/vloei__en_of_slibveld/Cat
+			, BBG_groep/overig_binnenwater/Cat
+			, BBG_groep/Waddenzee_Eems_Dollard/Cat
+			, BBG_groep/Oosterschelde/Cat
+			, BBG_groep/Westerschelde/Cat
+			, BBG_groep/Noordzee/Cat
+			, BBG_groep/bedrijfsterreinen/Cat
+		
+			, Brondata/BRK/Perceel/perceel_pandtype
+			, BBG_groep/openbare_voorzieningen/Cat
+			, BBG_groep/stortplaatsen/Cat
+			, BBG_groep/wrakkenopslagplaatsen/Cat
+			, BBG_groep/begraafplaats/Cat
+			, BBG_groep/delfstoffenwinning/Cat
+			, BBG_groep/bouwterrein/Cat
+			, BBG_groep/parken_en_plantsoenen/Cat
+			, BBG_groep/sportterreinen/Cat
+			, BBG_groep/volkstuinen/Cat
+			, BBG_groep/dagrecreatieve_terreinen/Cat
+			, BBG_groep/verblijfsrecreatie/Cat
+			, BBG_groep/glastuinbouw/Cat
+			
+			, BBG_groep/spoorwegen/Cat
+			, BBG_groep/hoofdweg/Cat
+			, BBG_groep/vliegveld/Cat
+		)
+	,	DialogType = "Map"
+	,	DialogData = "geometry"
+	,	FreeData = "False"
+	{
+		attribute<geometries/rdc>     geometry (poly)   := 
+			union_data(
+			.
+			, BBG_groep/semi_verhard_overig_terrein/Cat/geometry_rd
+			, BBG_groep/overige_agrarisch_gebruik/Cat/geometry_rd
+			, BBG_groep/bos/Cat/geometry_rd
+			, BBG_groep/droog_natuurlijk_terrein/Cat/geometry_rd
+			, BBG_groep/nat_natuurlijk_terrein/Cat/geometry_rd
+			, BBG_groep/IJsselmeer_Markermeer/Cat/geometry_rd
+			, BBG_groep/afgesloten_zeearm/Cat/geometry_rd
+			, BBG_groep/Rijn_en_Maas/Cat/geometry_rd
+			, BBG_groep/Randmeer/Cat/geometry_rd
+			, BBG_groep/spaarbekkens/Cat/geometry_rd
+			, BBG_groep/water_met_een_recreatieve_functie/Cat/geometry_rd
+			, BBG_groep/water_met_delfstofwinningsfunctie/Cat/geometry_rd
+			, BBG_groep/vloei__en_of_slibveld/Cat/geometry_rd
+			, BBG_groep/overig_binnenwater/Cat/geometry_rd
+			, BBG_groep/Waddenzee_Eems_Dollard/Cat/geometry_rd
+			, BBG_groep/Oosterschelde/Cat/geometry_rd
+			, BBG_groep/Westerschelde/Cat/geometry_rd
+			, BBG_groep/Noordzee/Cat/geometry_rd
+			, BBG_groep/bedrijfsterreinen/Cat/geometry_rd
+			
+			, Brondata/BRK/Perceel/perceel_pandtype/geometry
+			, BBG_groep/openbare_voorzieningen/Cat/geometry_rd
+			, BBG_groep/stortplaatsen/Cat/geometry_rd
+			, BBG_groep/wrakkenopslagplaatsen/Cat/geometry_rd
+			, BBG_groep/begraafplaats/Cat/geometry_rd
+			, BBG_groep/delfstoffenwinning/Cat/geometry_rd
+			, BBG_groep/bouwterrein/Cat/geometry_rd
+			, BBG_groep/parken_en_plantsoenen/Cat/geometry_rd
+			, BBG_groep/sportterreinen/Cat/geometry_rd
+			, BBG_groep/volkstuinen/Cat/geometry_rd
+			, BBG_groep/dagrecreatieve_terreinen/Cat/geometry_rd
+			, BBG_groep/verblijfsrecreatie/Cat/geometry_rd
+			, BBG_groep/glastuinbouw/Cat/geometry_rd
+			
+			, BBG_groep/spoorwegen/Cat/geometry_rd
+			, BBG_groep/hoofdweg/Cat/geometry_rd
+			, BBG_groep/vliegveld/Cat/geometry_rd
+			);
+			
+		attribute<typeringen/BBG>     bbg_code          := 
+			union_data(
+			.
+			/// terrein ondergrond
+			, BBG_groep/semi_verhard_overig_terrein/Cat/bbg_code
+			, BBG_groep/overige_agrarisch_gebruik/Cat/bbg_code
+			, BBG_groep/bos/Cat/bbg_code
+			, BBG_groep/droog_natuurlijk_terrein/Cat/bbg_code
+			, BBG_groep/nat_natuurlijk_terrein/Cat/bbg_code
+			, BBG_groep/IJsselmeer_Markermeer/Cat/bbg_code
+			, BBG_groep/afgesloten_zeearm/Cat/bbg_code
+			, BBG_groep/Rijn_en_Maas/Cat/bbg_code
+			, BBG_groep/Randmeer/Cat/bbg_code
+			, BBG_groep/spaarbekkens/Cat/bbg_code
+			, BBG_groep/water_met_een_recreatieve_functie/Cat/bbg_code
+			, BBG_groep/water_met_delfstofwinningsfunctie/Cat/bbg_code
+			, BBG_groep/vloei__en_of_slibveld/Cat/bbg_code
+			, BBG_groep/overig_binnenwater/Cat/bbg_code
+			, BBG_groep/Waddenzee_Eems_Dollard/Cat/bbg_code
+			, BBG_groep/Oosterschelde/Cat/bbg_code
+			, BBG_groep/Westerschelde/Cat/bbg_code
+			, BBG_groep/Noordzee/Cat/bbg_code
+			, BBG_groep/bedrijfsterreinen/Cat/bbg_code
+			
+			, Brondata/BRK/Perceel/perceel_pandtype/pand_type
+			, BBG_groep/openbare_voorzieningen/Cat/bbg_code
+			, BBG_groep/stortplaatsen/Cat/bbg_code
+			, BBG_groep/wrakkenopslagplaatsen/Cat/bbg_code
+			, BBG_groep/begraafplaats/Cat/bbg_code
+			, BBG_groep/delfstoffenwinning/Cat/bbg_code
+			, BBG_groep/bouwterrein/Cat/bbg_code
+			, BBG_groep/parken_en_plantsoenen/Cat/bbg_code
+			, BBG_groep/sportterreinen/Cat/bbg_code
+			, BBG_groep/volkstuinen/Cat/bbg_code
+			, BBG_groep/dagrecreatieve_terreinen/Cat/bbg_code
+			, BBG_groep/verblijfsrecreatie/Cat/bbg_code
+			, BBG_groep/glastuinbouw/Cat/bbg_code
+			/// infra overlay
+			, BBG_groep/spoorwegen/Cat/bbg_code
+			, BBG_groep/hoofdweg/Cat/bbg_code
+			, BBG_groep/vliegveld/Cat/bbg_code
+			);
+		
+		attribute<combine>                  grid_rel_100m    (NL_grid/domain)         := poly2grid(geometry, NL_grid/domain);
+		attribute<combine>                  grid_rel_25m     (NL_grid/domain_25m)     := poly2grid(geometry, NL_grid/domain_25m);
+		attribute<combine>                  grid_rel_10m     (NL_grid/domain_10m)     := poly2grid(geometry, NL_grid/domain_10m);
+
+		attribute<typeringen/BBG>           modus            (NL_grid/Domain)         := modus(grid_10m, /NL_grid/domain_10m/grid_100m_rel);
+		
+		
+		attribute<typeringen/BBG>           grid_100m        (NL_grid/Domain)         := BBG_code[grid_rel_100m];
+		attribute<typeringen/BBG>           grid_25m         (NL_grid/domain_25m)     := BBG_code[grid_rel_25m];
+		attribute<typeringen/BBG>           grid_10m         (NL_grid/domain_10m)     := BBG_code[grid_rel_10m];
+		
+		container per_BBG_klasse_potentiaal :=
+			for_each_nedv(
+				typeringen/BBG/BBG_potential/name
+				, 'potential(float32(grid_10m == '+string(typeringen/BBG/BBG_potential/org_id)+'[typeringen/BBG] ? 1f : 0f), geometries/potentialen/pot40m/potrange/RelWeightSqrt)'
+				, NL_grid/domain_10m
+				, float32
+			), FreeData = "False"
+		{
+			attribute<float32> NoData                 (NL_grid/domain_10m) := grid_10m == 0[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> IJsselmeer_Markermeer  (NL_grid/domain_10m) := grid_10m == 25[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Afgesloten_zeearm      (NL_grid/domain_10m) := grid_10m == 26[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Rijn_en_maas           (NL_grid/domain_10m) := grid_10m == 27[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Randmeer               (NL_grid/domain_10m) := grid_10m == 28[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> spaarbekkens           (NL_grid/domain_10m) := grid_10m == 29[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Waddenzee_Eems_Dollard (NL_grid/domain_10m) := grid_10m == 34[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Oosterschelde          (NL_grid/domain_10m) := grid_10m == 35[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Westerschelde          (NL_grid/domain_10m) := grid_10m == 36[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Noordzee               (NL_grid/domain_10m) := grid_10m == 37[typeringen/BBG] ? 1f : 0f;
+			attribute<float32> Buitenland             (NL_grid/domain_10m) := grid_10m == 38[typeringen/BBG] ? 1f : 0f;
+		}
+		
+		attribute<typeringen/BBG>           dominant_lu (NL_grid/domain_10m) := ='MakeDefined(argmax('+AsItemList('per_BBG_klasse_potentiaal/'+typeringen/BBG/name)+'), 0)[typeringen/bbg]';
+		
+		attribute<typeringen/BBG>           dominant_lu_modus            (Brondata/BRT/ReadFSS/LU)         := modus(dominant_lu, Brondata/BRT/ReadFSS/LU/per_grid_10m);
+	}
+	
+	Container Evaluatie
+	{
+		container per_nl
+		{
+			container BBG2015 := 
+				for_each_nedv(
+					typeringen/BBG/name
+					, 'sum(Brondata/BBG/BBG_2015/gg2015_src_rel == typeringen/BBG/v/'+typeringen/BBG/name+' ? Brondata/BBG/BBG_2015/area[uint32] : 0)[m2] / 10000[m2 / ha]'
+					, void
+					, ha
+				), FreeData = "False"
+			{
+				parameter<ha> Totaal := = 'add('+AsItemList(typeringen/BBG/name)+')';
+			}
+		
+			container New_BBG := 
+				for_each_nedv(
+					typeringen/BBG/name
+					, 'sum(/Analyse/Alternatieve_BBG/combine/dominant_lu_modus == typeringen/BBG/v/'+typeringen/BBG/name+' ? Brondata/BRT/ReadFSS/LU/area[uint32] : 0)[m2] / 10000[m2 / ha]'
+					, void
+					, ha
+				), FreeData = "False"
+			{
+				parameter<ha> Totaal := = 'add('+AsItemList(typeringen/BBG/name)+')';
+			}
+		
+			container Change := 
+				for_each_nedv(
+					typeringen/BBG/name
+					, 'MakeDefined((New_BBG/'+typeringen/BBG/name+'[float32] - BBG2015/'+typeringen/BBG/name+'[float32]) / BBG2015/'+typeringen/BBG/name+'[float32], 0f) * 100f'
+					, void
+					, float32
+				), FreeData = "False"
+			{
+				parameter<float32> Totaal := = 'add('+AsItemList(typeringen/BBG/name)+') / 39f';
+			}
+			
+			attribute<uint32> BBG          (typeringen/BBG)  := ='union_data(typeringen/BBG, '+AsItemList('BBG2015/'+typeringen/BBG/name)+')[uint32]';
+			attribute<uint32> Alternatief  (typeringen/BBG)  := ='union_data(typeringen/BBG, '+AsItemList('New_BBG/'+typeringen/BBG/name)+')[uint32]';
+			attribute<float32> Proc_Change  (typeringen/BBG)  := ='union_data(typeringen/BBG, '+AsItemList('Change/'+typeringen/BBG/name)+')';
+			
+			
+		}
+	
+		attribute<uint32> transitie (NL_grid/domain_10m) := MakeDefined(Brondata/BBG/BBG_2015/bbg2015_10m[uint32] + (100 * combine/dominant_lu[uint32]), 0);
+		
+		unit<uint32> full_dom := combine(typeringen/bbg, typeringen/bbg)
+		{
+		   attribute<uint8>    nr_1;
+		   attribute<uint8>    nr_2;
+		   attribute<string>   name_1   := nr_1 < 10b ? '0' + string(nr_1) : string(nr_1);
+		   attribute<string>   name_2   := nr_2 < 10b ? '0' + string(nr_2) : string(nr_2);
+		   attribute<string>   name     := 't' + name_1 + name_2;
+		   attribute<uint32>   values   := nr_1[uint32] * 100 + nr_2[uint32];
+		}
+		
+		container ExtractCounts :=
+			for_each_nedv(
+				full_dom/name
+				, 'sum(transitie == '+string(full_dom/values)+' ? 1 : 0)'
+				, void
+				, uint32
+			);
+		
+		attribute<string> volgnummer_string (typeringen/BBG) := (id(typeringen/BBG) < 10b ? '0'  : '') + string(id(typeringen/BBG)) ;
+		
+		container Matrix :=
+			for_each_nedv(
+				typeringen/BBG/name
+				, 'union_data(typeringen/BBG,' +replace(AsItemlist('ExtractCounts/t@BBG@'+volgnummer_string),'@BBG@', (id(typeringen/BBG) < 10b ? '0'  : '') + string(id(typeringen/BBG)))+')'
+				, typeringen/BBG
+				, uint32
+			);
+	}
+	
+}

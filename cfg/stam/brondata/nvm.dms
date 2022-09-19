@@ -1,0 +1,90 @@
+container NVM: using = "eenheden"
+{
+	unit<uint32> ReadCSV 
+	// :	StorageName     = "%SourceDataDir%/NVM/NVM_comm_1985_2020-05_geocoded.csv"
+	:	StorageName     = "%SourceDataDir%/NVM/ASRE_dataset_22sept_lean.csv"
+	,	StorageType     = "gdal.vect"
+	,	StorageReadOnly = "True"
+	, 	DialogType = "Map"
+	, 	DialogData = "geometry"
+	, 	FreeData = "False"
+	{
+		// attribute<string>   bouwvorm;
+		// attribute<string>   brutohuuropbrengst;
+		// attribute<string>   jaar;
+		// attribute<string>   jaar_maand;
+		// attribute<string>   koopprijs;
+		// attribute<string>   maand;
+		// attribute<string>   objecttype;
+		// attribute<string>   opp_totaal;
+		// attribute<string>   soortvastgoed;
+		// attribute<string>   bouwjaar;
+		// attribute<string>   geocode_id;
+		attribute<string>   id;
+		attribute<string>   x;
+		attribute<string>   y;
+		
+	}
+	
+	// unit<uint32> MaakFSS := ReadCSV, StorageName     = "%SourceDataDir%/NVM/NVM_commercieel_200519.fss"
+	unit<uint32> MaakFSS := ReadCSV, StorageName     = "%SourceDataDir%/NVM/NVM_commercieel_200922.fss"
+	{
+		// attribute<string>   brutohuuropbrengst   := ReadCSV/brutohuuropbrengst;
+		// attribute<string>   year                 := ReadCSV/jaar;
+		// attribute<string>   koopprijs            := ReadCSV/koopprijs;
+		// attribute<string>   objecttype           := ReadCSV/objecttype;
+		attribute<string>   opp_totaal           := ReadCSV/opp_totaal;
+		// attribute<string>   soortvastgoed        := ReadCSV/soortvastgoed;
+		// attribute<string>   bouwjaar             := ReadCSV/bouwjaar;
+		// attribute<string>   xcoord               := ReadCSV/x;
+		// attribute<string>   ycoord               := ReadCSV/y;
+		// attribute<string>   idobject             := ReadCSV/idobject;
+		// attribute<string>   strabo_nr            := ReadCSV/strabo_nr;
+		// attribute<string>   transactieid         := ReadCSV/transactieid;
+		attribute<string>   invprop                 := ReadCSV/invprop;
+		attribute<string>   building_type           := ReadCSV/building_type;
+		
+		attribute<uint32>   geocode_id              := ReadCSV/id[uint32];
+		attribute<string>   xcoord                  := ReadCSV/x;
+		attribute<string>   ycoord                  := ReadCSV/y;
+	}		
+	
+	unit<uint32> ReadFSS
+	:	StorageName     = "%SourceDataDir%/NVM/NVM_commercieel_200922.fss"
+	,	StorageReadOnly = "True"
+	, 	DialogType = "Map"
+	, 	DialogData = "geometry"
+	{
+		// attribute<string>   brutohuuropbrengst;
+		// attribute<eur>      brutohuuropbrengst_value := brutohuuropbrengst[eur];
+		// attribute<string>   year;
+		// attribute<jaar>     year_value               := year[jaar];
+		// attribute<string>   koopprijs;
+		// attribute<eur>      koopprijs_value          := koopprijs[eur];
+		// attribute<string>   objecttype;
+		// attribute<string>   opp_totaal;
+		// attribute<m2>       opp_totaal_value         := opp_totaal[m2];
+		// attribute<string>   soortvastgoed;
+		// attribute<string>   bouwjaar;
+		// attribute<jaar>     bouwjaar_value           := bouwjaar[jaar];
+		// attribute<string>   idobject;
+		// attribute<string>   strabo_nr;
+		// attribute<string>   transactieid;
+		
+		attribute<uint32>   geocode_id;
+		attribute<string>   xcoord;
+		attribute<string>   ycoord;
+		attribute<float32>  xco                      := xcoord[float32];
+		attribute<float32>  yco                      := ycoord[float32];
+		attribute<geometries/rdc> geometry           := point(xco, yco, geometries/rdc);
+		
+		// attribute</Brondata/CBS/regios/nederland/Src>     nl_rel                 := point_in_polygon(geometry, /Brondata/CBS/regios/nederland/Src/Geometry);
+		attribute</Brondata/CBS/regios/nederland/Src>     aggl_rel               := point_in_polygon(geometry, /Brondata/CBS/regios/gemeenten/gem_src/j2019/UrbanCores/Geometry);
+		attribute<string>                                 Agglomeration_name     := Brondata/CBS/regios/gemeenten/gem_src/j2019/UrbanCores/Agglomeration[aggl_rel];
+		attribute<NL_grid/domain>  NL_grid_domain_rel                   := geometry[NL_grid/domain];
+		
+		
+		
+	}
+	
+}

@@ -1,0 +1,156 @@
+container Uitzoekdingen : using = "geometries"
+{  
+	unit<uint32> Data_jan	
+	// :  StorageName = "C:/Users/jipcl/Downloads/wetransfer-fab642/Buy-to-let transacties en kleine transacties (Noord-Holland, Zuid-Holland & Utrecht).csv"
+	// :  StorageName = "C:/Users/jipcl/Downloads/wetransfer-fab642/Huurontwikkeling (Noord-Holland, Zuid-Holland & Utrecht).csv"
+	:  StorageName = "C:/Users/jipcl/Downloads/wetransfer-fab642/Huurtransacties (Noord-Holland, Zuid-Holland & Utrecht).csv"
+	,  StorageType = "gdal.vect"
+	,  StorageReadOnly = "True"
+	{
+		attribute<fpoint>            geometry_ll  := point(longitude[float32], latitude[float32], fpoint);
+		attribute<geometries/rdc>    geometry_rd  := LatLongWgs842RD(geometry_ll, fpoint)[geometries/rdc];
+		attribute<float32>           x            := pointcol(geometry_rd);
+		attribute<float32>           y            := pointrow(geometry_rd);
+	}
+	
+	
+	unit<uint32> CRE_Data_Apeksha
+	:  StorageName = "%SourceDataDir%/Overig/CRE.csv"
+	,  StorageType = "gdal.vect"
+	,  StorageReadOnly = "True"
+	, Syncmode = "none"
+	{
+		attribute<string>   x;
+		attribute<string>   y;
+		attribute<string>   postcode;
+		attribute<string>   huisnr;
+		attribute<float32>  xco                := x[float32];
+		attribute<float32>  yco                := y[float32];
+		attribute<rdc>      geometry           := point(xco, yco, geometries/rdc);
+		attribute<string>   sbi_sectie         := rjoin(pc_huisnr, /Brondata/LISA/LISA_combined/PC_huisnr, brondata/LISA/LISA_combined/sbi_sectie);
+		attribute<uint32>   banen              := rjoin(pc_huisnr, /Brondata/LISA/LISA_combined/PC_huisnr, brondata/LISA/LISA_combined/banen)[uint32];
+		
+		attribute<string>   pc_huisnr := postcode + '_' + huisnr;
+		
+		unit<uint32> not_matched := subset(!IsDefined(sbi_sectie))
+		{
+			attribute<rdc>      geometry       := ../geometry[nr_OrgEntity];
+		}
+	}
+
+	container Chat
+	{
+		unit<uint32> db
+		:  StorageName = "%SourceDataDir%/Overig/Ledenadministratie_jan20.csv"
+		,  StorageType = "gdal.vect"
+		,  StorageReadOnly = "True"
+		{
+			attribute<uint32> db_id := id[uint32];
+			attribute<string> type;
+		}
+	
+	
+	}
+	
+	container SQL
+	{
+		unit<uint32> db
+		:  StorageName = "%SourceDataDir%/Overig/Ledenadministratie_jan20.csv"
+		,  StorageType = "gdal.vect"
+		,  StorageReadOnly = "True"
+		{
+			attribute<uint32> db_id := id[uint32];
+			attribute<string> type;
+			attribute<string> title;
+			attribute<string> manger;
+			attribute<string> firstname;
+			attribute<string> initials;
+			attribute<string> lastname;
+			attribute<string> lastname_uq := lastname == 'Kraak' && firstname == 'Jeroen' 
+												? 'Kraak Medior' 
+												: lastname == 'Kraak' && firstname == 'Robin'
+													? 'Kraak Junior'
+													: lastname;
+			attribute<string> year        := right(inauguration_date,4);
+			attribute<string> iban;
+			attribute<string> address;
+			attribute<string> zipcode;
+			attribute<string> town;
+			attribute<string> email;
+			attribute<string> phonenumber;
+			attribute<uint32> length_cm    := replace(length, ',', '')[uint32]; 
+			attribute<string> shirtsize;
+			attribute<string> date_of_birth;
+			attribute<string> nickname;
+			attribute<string> year_name;
+			attribute<string> year_of_graduation;
+			attribute<string> education;
+			attribute<string> employment;
+			attribute<string> complete_address := address + '_' + zipcode + '_' + town;
+			attribute<uint32> address_id       := rjoin(complete_address, SQL/address/values, SQL/address/address_id);
+			attribute<uint32> type_id          := rjoin(type, SQL/user_type/type, SQL/user_type/type_id);
+			attribute<uint32> year_id          := rjoin(year, SQL/year/year, SQL/year/year_id);
+		}
+		
+		unit<uint32> user := subset(IsDefined(db/id))
+		{ 
+			attribute<uint32> user_id       := db/db_id[nr_OrgEntity];
+			attribute<string> firstname     := db/firstname[nr_OrgEntity];
+			attribute<string> lastname      := db/lastname[nr_OrgEntity];
+			attribute<string> phonenumber   := db/phonenumber[nr_OrgEntity];
+			attribute<string> email         := db/email[nr_OrgEntity];
+			attribute<string> iban          := db/iban[nr_OrgEntity];
+			attribute<string> initials      := db/initials[nr_OrgEntity];
+			attribute<string> title         := db/title[nr_OrgEntity];
+			attribute<string> manger        := db/manger[nr_OrgEntity];
+			attribute<uint32> length        := db/length_cm[nr_OrgEntity];
+			attribute<string> shirtsize     := db/shirtsize[nr_OrgEntity];
+			attribute<string> date_of_birth := db/date_of_birth[nr_OrgEntity];
+			attribute<uint32> address_id    := db/address_id[nr_OrgEntity];
+			attribute<uint32> type_id       := db/type_id[nr_OrgEntity];
+			attribute<uint32> year_id       := db/year_id[nr_OrgEntity];
+			
+			// attribute<uint32> employment_id;
+			
+		}
+		
+		unit<uint32> address := unique(db/complete_address)
+		{
+			attribute<uint32> address_id    := id(.);
+			attribute<string> address       := rjoin(values, db/complete_address, db/address);
+			attribute<string> zipcode       := rjoin(values, db/complete_address, db/zipcode);
+			attribute<string> town          := rjoin(values, db/complete_address, db/town);
+		}
+		
+		// unit<uint32> employment := subset(IsDefined(db/id))
+		// {
+			// attribute<uint32> user_id       := db/db_id[nr_OrgEntity];
+			// attribute<string> nickname      := db/nickname[nr_OrgEntity];
+			// attribute<string> lastname      := db/lastname[nr_OrgEntity];
+		// }
+		
+		unit<uint32> year := unique(db/year)
+		{
+			attribute<uint32> year_id       := id(.);
+			attribute<string> name          := rjoin(year, db/year, db/year_name);
+			attribute<string> year          := values;
+		}
+		
+		unit<uint32> user_type := unique(db/type)
+		{
+			attribute<uint32> type_id       := id(.);
+			attribute<string> type          := values;
+		}
+		
+		unit<uint32> nicknames
+		:  StorageName = "%SourceDataDir%/Overig/Bijnamen.csv"
+		,  StorageType = "gdal.vect"
+		,  StorageReadOnly = "True"
+		{
+			attribute<uint32> nickname_id := id(.);
+			attribute<string> lastname_uq    := achternaam;
+			attribute<uint32> user_id        := rjoin(lastname_uq, db/lastname_uq, db/db_id);
+			attribute<string> nickname    := bijnaam;
+		}
+	}
+}

@@ -1,0 +1,494 @@
+Container NetwerkDist: using = "eenheden"
+{ 
+	container MaakNetwerkDist_Inwoners
+	{
+		parameter<string>  org_point_scale := '100m';
+		parameter<string>  org_point_scale_ext := org_point_scale == '100m' ? '' : '_'+org_point_scale;
+		unit<uint32>       org             := = 'NL_grid/points'+org_point_scale_ext;
+		unit<uint32>       dest            := /Brondata/population/HasPop;
+		parameter<string>  aantal_inw_1000 := '100'; // * 1000
+		parameter<float32> aantal_inw      := (string(aantal_inw_1000) + '000')[float32];
+		parameter<string>  jaar            := '2020';
+		parameter<string>  netwerk_type    := 'car'; //'pedestrian' 'car' 'bike'
+		
+		container NetwerkSpec := =
+			'rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/'+string(netwerk_type)+'/All
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/'+string(netwerk_type)+'/All/line
+				, '+quote(netwerk_type)+'
+			)';
+
+		unit<uint64> OD_limit := //OD_limit100k_Di_directed          dm_directed_On_Dn_limit_na(
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, aantal_inw, dest/pop[float32]
+			)
+		, StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_inw_1000+'kInw_'+jaar+'_'+org_point_scale+'.fss'"
+		{ 
+			attribute<float32>    OrgZone_MaxImp (org);
+		}
+		
+		container Read_Inwoners
+		:	StorageName     = "='%LocalDataDir%/Output/Reistijd'+aantal_inw_1000+'kInw_'+jaar+'_'+org_point_scale+'.fss'"
+		,	StorageReadOnly = "True"
+		{
+			unit<spoint> grid_dom := ='NL_grid/Domain'+org_point_scale_ext;
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (grid_dom)  := = 'OrgZone_MaxImp[invert(NL_grid/points'+org_point_scale_ext+'/NL_grid_domain'+org_point_scale_ext+'_rel)]', StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_inw_1000+'kInw_'+jaar+'_'+org_point_scale+'.tif'";
+		}
+		
+
+	}
+	container MaakNetwerkDist_Banen
+	{ 
+		parameter<string>  org_point_scale     := '100m'; //org gridsize
+		parameter<string>  aantal_obj_1000     := '100';  //destination massa in duizenden
+		parameter<string>  jaar                := '2018'; //banen jaar
+		parameter<string>  netwerk_type        := 'car'; //'pedestrian' 'car' 'bike'
+		
+		parameter<string>  Cluster_size        := Parameters/Dests_geclusterd ? 'Clust-'+Parameters/Advanced/Dest_location_scale : '';
+		parameter<string>  org_point_scale_ext := org_point_scale == '100m' ? '' : '_'+org_point_scale;
+		unit<uint32>       org                 := = 'NL_grid/points'+org_point_scale_ext;
+		unit<uint32>       dest                := = 'Brondata/LISA/ReadFSS/y'+jaar+'/PerYear/HeeftBanen';
+		parameter<float32> aantal_obj          := (string(aantal_obj_1000) + '000')[float32];
+		
+		unit<spoint>       org_grid            := =org_point_scale == '100m' ? 'NL_grid/domain' : 'NL_grid/domain_'+org_point_scale;
+		
+		container NetwerkSpec := =
+			'rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/Network_'+netwerk_type+' 
+				, org/geometry
+				, dest/geometry
+				, /Brondata/OSM/Network_'+netwerk_type+'/Geometry
+				, '+quote(netwerk_type)+'
+			)';
+			
+		unit<uint64> OD_limit :=
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, aantal_obj, dest/nr_banen[float32]
+			)
+		, StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_obj_1000+'kBanen_'+jaar+'_Org-'+org_point_scale+'_'+Cluster_size+'.fss'"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+		}
+		
+		container Read_Banen
+		: StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_obj_1000+'kBanen_'+jaar+'_Org-'+org_point_scale+'_'+Cluster_size+'.fss'"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (org_grid)  := OrgZone_MaxImp[invert(org/org_grid_rel)], StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_obj_1000+'kBanen_'+jaar+'_Org-'+org_point_scale+'_'+Cluster_size+'.tif'";
+		}
+	}
+	
+	container MaakNetwerkDist_Beroepsbevolking
+	{
+		unit<uint32> org   := NL_grid/points;
+		unit<uint32> dest  := BronData/CBS/CBS_vierkanten/V2017/points;
+		parameter<string>  aantal_pers_1000 := '10';
+		parameter<float32> aantal_pers  := (string(aantal_pers_1000) + '000')[float32];
+		parameter<string>  jaar := '2017';
+		parameter<string>  netwerk_type := 'pedestrian'; //'pedestrian' 'car' 'bike'
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/pedestrian/All
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/pedestrian/All/line
+				, 'pedestrian'
+			);
+			
+		unit<uint64> OD_limit :=
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, aantal_pers, dest/beroepsbevolking2017
+			)
+		, StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_pers_1000+'kBeroepsbev_'+jaar+'.fss'"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+		}
+		
+		container Read_Beroepsbevolking
+		:	StorageName     = "='%LocalDataDir%/Output/Reistijd'+aantal_pers_1000+'kBeroepsbev_'+jaar+'.fss'"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "='%LocalDataDir%/Output/Reistijd'+aantal_pers_1000+'kBeroepsbev_'+jaar+'.tif'";
+		}
+	}
+	
+	container MaakNetwerkDist_Woningen
+	{
+		unit<uint32> org   := NL_grid/points;
+		unit<uint32> dest  := Brondata/BAG/Snapshots/VBOs/vbo2018/GebruiksdoelSets/woon/GebruiksdoelSet/count_non_zero;
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/Car/All
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/Car/All/line
+				, 'car'
+			);
+		unit<uint64> OD_limit100k_woningen := //OD_limit100k_Di_directed          dm_directed_On_Dn_limit_na(
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 100000f, dest/count_ha[float32]
+			)
+		, StorageName = "%LocalDataDir%/Output/Reistijd100kwoningen.fss";
+		
+		container Read_Woningen 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd100kwoningen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd100kwoningen.tif";
+		}
+	}
+	
+	container MaakNetwerkDist_Winkels
+	{
+		unit<uint32> org   := NL_grid/points;
+		unit<uint32> dest  := Brondata/BAG/Snapshots/VBOs/vbo/GebruiksdoelSets/winkel/GebruiksdoelSet;
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/Car/All
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/Car/All/line
+				, 'car'
+			);
+		unit<uint64> OD_limit10k_m2_winkel := //OD_limit100k_Di_directed          dm_directed_On_Dn_limit_na(
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 10000f, dest/oppervlakte[float32]
+			)
+		, StorageName = "%LocalDataDir%/Output/Reistijd10kwinkel.fss";
+		
+		container Read_Winkels 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd10kwinkel.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)]; //, StorageName = "%LocalDataDir%/Output/Reistijd10kwinkel.tif";
+		}
+	}
+	
+	container MaakNetwerkDist_Utiliteit
+	{
+		unit<uint32> org   := NL_grid/points;
+		unit<uint32> dest  := Brondata/BAG/Snapshots/VBOs/vbo2018/UtiliteitsFucties;
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/Car/All
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/Car/All/line
+				, 'car'
+			);
+		unit<uint64> OD_limit1mln_m2_utiliteit := //OD_limit100k_Di_directed          dm_directed_On_Dn_limit_na(
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 1000000f, dest/oppervlakte[float32]
+			)
+		, StorageName = "%LocalDataDir%/Output/Reistijd1mlnUtiliteit.fss";
+		
+		container Read_Utiliteit 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd1mlnUtiliteit.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd1mlnUtiliteit.tif";
+		}
+
+	}
+	
+	container MaakNetwerkDist_Scholen
+	{
+		unit<uint32> org   := Brondata/BAG/Snapshots/Panden/pand_woonvbo;
+		unit<uint32> dest  := Brondata/Overig/Basisscholen/Basisscholen_defined;
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/Car/All
+				, org/centroid
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/Car/All/line
+				, 'car'
+			);
+		unit<uint64> OD_limit_3_scholen := //OD_limit100k_Di_directed          dm_directed_On_Dn_limit_na(
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 3f, const(1f, dest)
+			)
+		, StorageName = "%LocalDataDir%/Output/Reistijd3Scholen.fss";
+		
+		container Read_Scholen
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd3Scholen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>  OrgZone_MaxImp (org);
+		}
+	}
+	
+	container MaakNetwerkDist_EnkeleSchool
+	{		
+		unit<uint32> org    := Brondata/BAG/Snapshots/Panden/pand_woonvbo;
+		unit<uint32> dest   := Brondata/Overig/Basisscholen/Basisscholen_defined;
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/Car/All
+				, org/centroid
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/Car/All/line
+				, 'car'
+			);
+		unit<uint64> OD_EnkeleSchool := //OD_limit100k_Di_directed          dm_directed_On_Dn_limit_na(
+			dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 1f, const(1f, dest)
+			)
+		, StorageName = "%LocalDataDir%/Output/ReistijdEnkeleSchool.fss";
+		
+		container Read_EnkeleSchool
+		:	StorageName     = "%LocalDataDir%/Output/ReistijdEnkeleSchool.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>  OrgZone_MaxImp (org);
+		}
+	}
+
+	
+	container Export_SchoolDistance
+	{
+		unit<uint32>          pand    := Brondata/BAG/Snapshots/Panden/pand2018_woonvbo;
+		
+		attribute<string>     pand_id (pand)              := pand/identificatie;
+		attribute<float32>    Reistijd3Scholen (pand)     := MaakNetwerkDist_Scholen/Read_Scholen/OrgZone_MaxImp;
+		attribute<float32>    ReistijdEnkeleSchool (pand) := MaakNetwerkDist_EnkeleSchool/Read_EnkeleSchool/OrgZone_MaxImp;
+	}
+	
+	container MaakNetwerkDist_Groen
+	{
+		unit<uint32> org   := NL_grid/points, FreeData = "False";
+		unit<uint32> dest  := Brondata/BGT/ReadFSS/begroeidterreindeel/Groen/ha_met_groen, FreeData = "False";
+		
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/Pedestrian/all
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/Pedestrian/All/line
+				, 'pedestrian'
+			);
+		unit<uint64> OD_limit_1ha_groen := 
+			dijkstra_m64('bidirectional;startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 1f, dest/per_ha_point
+			)
+		, StorageName = "%LocalDataDir%/Output/Reistijd_1ha_groen.fss";
+		
+		unit<uint64> OD_limit_10ha_groen := 
+			dijkstra_m64('bidirectional;startPoint(Node_rel):max_imp;endPoint(Node_rel);limit(OrgZone_max_mass,DstZone_mass)'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				, 10f, dest/per_ha_point
+			)
+		, StorageName = "%LocalDataDir%/Output/Reistijd_10ha_groen.fss";
+		
+		container Read_1ha_Groen 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd_1ha_groen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd_1ha_groen.tif";
+		}
+		
+		container Read_10ha_Groen 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd_10ha_groen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd_10ha_groen.tif";
+		}
+
+	}
+	
+	container Read_differentsettings
+	{
+		unit<uint32> org   := NL_grid/points, FreeData = "False";
+
+		container Read_1ha_Groen 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd1haGroen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd1haGroen.tif";
+		}
+		
+		container Read_10ha_Groen 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd10haGroen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd10haGroen.tif";
+		}
+
+		container Read_1k_Beroepsbevolking
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd1kBeroepsbev_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd1kBeroepsbev_2017.tif";
+		}
+		
+		container Read_10k_Beroepsbevolking
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd10kBeroepsbev_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd10kBeroepsbev_2017.tif";
+		}
+
+		container Read_1mln_Utiliteit 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd1mlnUtiliteit.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd1mlnUtiliteit.tif";
+		}
+		
+		container Read_5k_Inwoners
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd5kInw_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd5kInw_2017.tif";
+		}
+		container Read_10k_Inwoners
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd10kInw_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd10kInw_2017.tif";
+		}
+		container Read_100k_Inwoners
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd100kInw_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd100kInw_2017.tif";
+		}
+		container Read_200k_Inwoners
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd200kInw_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd200kInw_2017.tif";
+		}
+		container Read_300k_Inwoners
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd300kInw_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd300kInw_2017.tif";
+		}
+		
+		container Read_500k_Inwoners
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd500kInw_2017.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd500kInw_2017.tif";
+		}
+
+		container Read_100k_Winkels 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd100kwinkel.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd100kwinkel.tif";
+		}
+
+		container Read_100k_Woningen 
+		:	StorageName     = "%LocalDataDir%/Output/Reistijd100kwoningen.fss"
+		,	StorageReadOnly = "True"
+		{
+			attribute<float32>    OrgZone_MaxImp (org);
+			attribute<float32>    grid   (NL_grid/Domain)  := OrgZone_MaxImp[invert(NL_grid/points/NL_grid_domain_rel)], StorageName = "%LocalDataDir%/Output/Reistijd100kwoningen.tif";
+		}
+		
+	}
+}

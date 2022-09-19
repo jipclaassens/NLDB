@@ -1,0 +1,824 @@
+container BGT
+{
+	// 1. DOWNLOAD BGT: https://api.pdok.nl/lv/bgt/download/v1_0/cache/2/83dc8d3f-da1f-40b8-a84f-a915e7816fc5/bgt-citygml-nl.zip
+		// Werkt de link niet meer? Download dan de citygml versie van PDOK. De link kun je krijgen door inspect element op de download knop, dan tab network, dan op bgt-citygml.zip rechtermuis knop > copy > copy link address.
+	// 2. http://svn.objectvision.nl/public/geodms/prj/brt
+	
+	// 2. // cmd prompt --> navigeer naar shp folder --> dir /B/S > filelist.txt --> change extention to csv --> add firstrow with path;
+	
+	parameter<string> filedate := '20200518';
+	container Src
+	{
+		unit<uint32> Filelist : // cmd prompt --> navigeer naar shp folder --> dir /B/S > filelist.txt --> change extention to csv --> add firstrow with path;
+			StorageName = "='%SourceDataDir%/BGT/'+filedate+'/shp/filelist.csv'"
+		,	StorageType = "gdal.vect"
+		,	StorageReadOnly = "True"
+		{
+			attribute<string> path;
+			
+			attribute<string> extensie := substr(path, strlen(path) - 4, 4);
+			
+			attribute<string> unqfile      := replace(path, '''' , '');
+			attribute<string> filename     := replace(unqfile,'. ','_', ' ', '_','-','');
+			attribute<uint32> pos          := strrpos(filename, '\\');
+			attribute<string> filename2    := substr(filename, pos);
+			attribute<string> filename3    := replace(filename2, '\\', '');
+			attribute<string> filename4    := left(filename3, strlen(filename3) - 4);
+		}
+		
+		unit<uint32> shapes := subset(filelist/extensie == '.shp')
+		{
+			attribute<string> Filename        := filelist/filename4[nr_OrgEntity];
+			attribute<string> Filepad         := filelist/unqfile[nr_OrgEntity];
+		}
+		
+		container read_shapefiles := 
+			for_each_ne(
+				shapes/filename
+				, 'read_shapefiles_templ('+quote(shapes/filepad)+')'
+				);
+				
+
+		template read_shapefiles_templ
+		{
+			//
+			parameter<string> filepad;
+			//
+			
+			unit<uint32> shape :
+				StorageName     = "=filepad"
+			,	StorageType     = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType      = "map"
+			,	DialogData     = "geometry"
+			{
+				attribute<geometries/rdc>      geometry (poly);
+			}
+		}
+		
+		// unit<uint32> Spoor : 
+			// StorageName = "%SourceDataDir%/BGT/20180327/gml/bgt_spoor.gml"
+		// ,	StorageType = "gdal.vect"
+		// ,	DialogType      = "map"
+		// ,	DialogData     = "geometry_rd"
+		// {
+			// attribute<geometries/rdc> geometry (arc);
+		// }
+		container ReadGML
+		{
+			unit<uint32> wegdeel_gml
+			:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/gml/bgt_wegdeel.gml'"
+			,   StorageType = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType = "Map"
+			,	DialogData = "geometry"
+			{
+				attribute<geometries/rdc>            geometry (poly);
+				attribute<string>                    FUNCTION;
+				attribute<int32>                     relatieveHoogteligging;
+				attribute<string>                    wegdeelOpTalud;
+				attribute<string>                    plus_functieWegdeel;
+			}
+			
+			unit<uint32> waterdeel_gml
+			:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/gml/bgt_waterdeel.gml'"
+			,   StorageType = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType = "Map"
+			,	DialogData = "geometry"
+			{
+				attribute<string>                    class;
+				attribute<geometries/rdc>            geometry (poly);
+				attribute<int32>                     relatieveHoogteligging;
+			}
+			
+			unit<uint32> onbegroeidterreindeel_gml
+			:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/gml/bgt_onbegroeidterreindeel.gml'"
+			,   StorageType = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType = "Map"
+			,	DialogData = "geometry"
+			{
+				attribute<geometries/rdc>            geometry (poly);
+				attribute<string>                    bgt_fysiekVoorkomen;
+				attribute<int32>                     relatieveHoogteligging;
+				attribute<string>                    onbegroeidterreindeelOpTalud;
+			}
+			
+			unit<uint32> begroeidterreindeel_gml
+			:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/gml/bgt_begroeidterreindeel.gml'"
+			,   StorageType = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType = "Map"
+			,	DialogData = "geometry"
+			{
+				attribute<string>                    Class;
+				attribute<geometries/rdc>            geometry (poly);
+				attribute<int32>                     relatieveHoogteligging;
+				attribute<string>                    begroeidterreindeelOpTalud;
+			}
+			
+			unit<uint32> ondersteunendwaterdeel_gml
+			:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/gml/bgt_ondersteunendwaterdeel.gml'"
+			,   StorageType = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType = "Map"
+			,	DialogData = "geometry"
+			{
+				attribute<geometries/rdc>            geometry  (poly);
+				attribute<string>                    Class;
+				attribute<int32>                     relatieveHoogteligging;
+				attribute<string>                    ondersteunendwaterdeelOpTalud;
+
+			}
+
+			unit<uint32> ondersteunendwegdeel_gml
+			:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/gml/bgt_ondersteunendwegdeel.gml'"
+			,   StorageType = "gdal.vect"
+			,	StorageReadOnly = "True"
+			,	DialogType = "Map"
+			,	DialogData = "geometry"
+			{
+				attribute<string>                    FUNCTION;
+				attribute<geometries/rdc>            geometry (poly);
+				attribute<int32>                     relatieveHoogteligging;
+				attribute<string>                    ondersteunendwegdeelOpTalud;
+			}
+		}
+	}
+		
+	container MaakFSS
+	{
+		unit<uint32> gebouwinstallatie := src/read_shapefiles/gebouwinstallatie/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/gebouwinstallatie.fss'"
+		,	SyncMode        = "All"
+		{
+			attribute<string>                                plus_typeg         := src/read_shapefiles/gebouwinstallatie/shape/plus_typeg;
+			attribute<typeringen/BGT/gebouwinstallatie_type> type_rel           := rlookup(PLUS_TYPEG, typeringen/BGT/gebouwinstallatie_type/Label);
+			attribute<uint32>                                code               := typeringen/BGT/gebouwinstallatie_type/code[type_rel];
+			attribute<uint8>                                 group              := typeringen/BGT/gebouwinstallatie_type/group[type_rel];
+			attribute<geometries/rdc>                        geometry_rd (poly) := geometry[geometries/rdc];
+		} 
+
+		unit<uint32> functioneelgebied := src/read_shapefiles/functioneelgebied/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/functioneelgebied.fss'"
+		,	SyncMode        = "All"
+		{
+			attribute<string> plus_type :=src/read_shapefiles/functioneelgebied/shape/plus_type;
+			attribute<string> BGT_TYPE  := src/read_shapefiles/functioneelgebied/shape/BGT_TYPE;
+			attribute<typeringen/BGT/functioneelgebied_type> type_rel           := plus_type == 'waardeOnbekend' && BGT_TYPE  == 'kering' ? typeringen/BGT/functioneelgebied_type/V/kering : rlookup(plus_type, typeringen/BGT/functioneelgebied_type/label);
+			attribute<uint32>                                code               := typeringen/BGT/functioneelgebied_type/code[type_rel];
+			attribute<uint8>                                 group              := typeringen/BGT/functioneelgebied_type/group[type_rel];
+			attribute<geometries/rdc>                        geometry_rd (poly) := geometry[geometries/rdc];
+		}
+
+		unit<uint32> onbegroeidterreindeel := src/ReadGML/onbegroeidterreindeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/onbegroeidterreindeel.fss'"
+		,	SyncMode    = "All"
+		{
+			attribute<string>                                    bgt_fysiekVoorkomen := src/ReadGML/onbegroeidterreindeel_gml/bgt_fysiekVoorkomen;
+			attribute<typeringen/BGT/onbegroeidterreindeel_type> type_rel           := rlookup(bgt_fysiekVoorkomen , typeringen/BGT/onbegroeidterreindeel_type/Label);
+			attribute<uint32>                                    code               := typeringen/BGT/onbegroeidterreindeel_type/code[type_rel];
+			attribute<uint8>                                     group              := typeringen/BGT/onbegroeidterreindeel_type/group[type_rel];
+			attribute<geometries/rdc>                            geometry_rd (poly) := geometry[geometries/rdc];
+			attribute<string>                                    onbegroeidterreindeelOpTalud := src/ReadGML/onbegroeidterreindeel_gml/onbegroeidterreindeelOpTalud;
+		}
+
+		unit<uint32> begroeidterreindeel := src/ReadGML/begroeidterreindeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/begroeidterreindeel.fss'"
+		{
+			attribute<string> Class;
+			attribute<typeringen/BGT/begroeidterreindeel_type> type_rel           := rlookup(Class, typeringen/BGT/begroeidterreindeel_type/Label);
+			attribute<uint32>                          code               := typeringen/BGT/begroeidterreindeel_type/code[type_rel];
+			attribute<uint8>                           group              := typeringen/BGT/begroeidterreindeel_type/group[type_rel];
+			attribute<geometries/rdc>                        geometry_rd (poly) := geometry[geometries/rdc];
+				attribute<string>                    begroeidterreindeelOpTalud;
+		}
+
+		unit<uint32> ondersteunendwaterdeel_water := src/ReadGML/ondersteunendwaterdeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ondersteunendwaterdeel_water.fss'"
+		,	SqlString       = "SELECT * FROM ondersteunendwaterdeel where CLASS = 'oever, slootkant'"
+		{
+			attribute<string> Class;
+			attribute<typeringen/BGT/ondersteunendwaterdeel_type> type_rel            := rlookup(CLASS, typeringen/BGT/ondersteunendwaterdeel_type/Label);
+			attribute<uint32>                             code                := typeringen/BGT/ondersteunendwaterdeel_type/code[type_rel];
+			attribute<uint8>                              group               := typeringen/BGT/ondersteunendwaterdeel_type/group[type_rel];
+			attribute<geometries/rdc>                           geometry_rd  (poly) := geometry[geometries/rdc];
+			attribute<string>                    ondersteunendwaterdeelOpTalud;
+		}
+
+		unit<uint32> ondersteunendwaterdeel := src/ReadGML/ondersteunendwaterdeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ondersteunendwaterdeel.fss'"
+		,	SqlString       = "SELECT * FROM ondersteunendwaterdeel where CLASS <> 'oever, slootkant'"
+		{
+			attribute<string> Class;
+			attribute<typeringen/BGT/ondersteunendwaterdeel_type> type_rel            := rlookup(CLASS, typeringen/BGT/ondersteunendwaterdeel_type/Label);
+			attribute<uint32>                             code                := typeringen/BGT/ondersteunendwaterdeel_type/code[type_rel];
+			attribute<uint8>                              group               := typeringen/BGT/ondersteunendwaterdeel_type/group[type_rel];
+			attribute<geometries/rdc>                           geometry_rd  (poly) := geometry[geometries/rdc];
+			attribute<string>                    ondersteunendwaterdeelOpTalud;
+		}
+
+		unit<uint32> ondersteunendwegdeel := src/ReadGML/ondersteunendwegdeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ondersteunendwegdeel.fss'"
+		{
+			attribute<string> FUNCTION;
+			attribute<typeringen/BGT/ondersteunendwegdeel_type> type_rel           := rlookup(FUNCTION, typeringen/BGT/ondersteunendwegdeel_type/Label);
+			attribute<uint32>                           code               := typeringen/BGT/ondersteunendwegdeel_type/code[type_rel];
+			attribute<uint8>                            group              := typeringen/BGT/ondersteunendwegdeel_type/group[type_rel];
+			attribute<geometries/rdc>                         geometry_rd (poly) := geometry[geometries/rdc];
+			attribute<string>                    ondersteunendwegdeelOpTalud;
+		}
+
+		unit<uint32> ongeclassificeerdobject := src/read_shapefiles/ongeclassificeerdobject/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ongeclassificeerdobject.fss'"
+		{
+			attribute<string> plus_statu;
+			attribute<typeringen/BGT/ongeclassificeerdobject_type> type_rel            := rlookup(plus_statu, typeringen/BGT/ongeclassificeerdobject_type/Label);
+			attribute<uint32>                              code                := typeringen/BGT/ongeclassificeerdobject_type/code[type_rel];
+			attribute<uint8>                               group               := typeringen/BGT/ongeclassificeerdobject_type/group[type_rel];
+			attribute<geometries/rdc>                            geometry_rd  (poly) := geometry[geometries/rdc];
+		}
+
+		// unit<uint32> overbruggingsdeel := src/read_shapefiles/overbruggingsdeel/shape
+		// ,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/overbruggingsdeel.fss'"
+		// {
+			// attribute<string> Class;
+			// attribute<string> hoortBijTy;			
+			// attribute<typeringen/BGT/overbruggingsdeel_type>          type_rel           := rlookup(Class     , typeringen/BGT/overbruggingsdeel_type/Label);
+			// attribute<typeringen/BGT/overbruggingsdeel_hoortbij_type> hoortbij_rel       := rlookup(hoortBijTy, typeringen/BGT/overbruggingsdeel_hoortbij_type/Label);
+			// attribute<uint32>                                 code               := typeringen/BGT/overbruggingsdeel_hoortbij_type/code[hoortbij_rel];
+			// attribute<uint8>                                  group              := typeringen/BGT/overbruggingsdeel_hoortbij_type/group[hoortbij_rel];
+			// attribute<geometries/rdc>                               geometry_rd (poly) := geometry[geometries/rdc];
+
+			// container nabij_wegdeel_brug                                         := connect_info(wegdeel_brug/geometry_rd, centroid(geometry_rd));
+			// attribute<wegdeel_brug>                           wegdeel_brug_rel   := nabij_wegdeel_brug/arcId;
+			// attribute<string>                                 function           := wegdeel_brug/function[wegdeel_brug_rel];
+		// }
+
+		unit<uint32> overigbouwwerk := src/read_shapefiles/overigbouwwerk/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/overigbouwwerk.fss'"
+		{
+			attribute<string> plus_type;
+			attribute<string> BGT_type;
+			attribute<string>                      class              := plus_type == 'waardeOnbekend' ? BGT_type : plus_type;
+			attribute<typeringen/BGT/bouwwerk_overig_type> type_rel           := rlookup(class, typeringen/BGT/bouwwerk_overig_type/Label);
+			attribute<uint32>                      code               := typeringen/BGT/bouwwerk_overig_type/code[type_rel];
+			attribute<uint8>                       group              := typeringen/BGT/bouwwerk_overig_type/group[type_rel];
+			attribute<geometries/rdc>                    geometry_rd (poly) := geometry[geometries/rdc];
+		}
+
+		// unit<uint32> tunneldeel := src/read_shapefiles/tunneldeel/shape
+		// ,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/tunneldeel.fss'"
+		// {
+			// attribute<string> plus_statu;
+			// attribute<typeringen/BGT/pand_type> type_rel           := rlookup(plus_statu, typeringen/BGT/tunneldeel_type/Label);
+			// attribute<uint32>           code               := typeringen/BGT/tunneldeel_type/code[type_rel];
+			// attribute<uint8>            group              := typeringen/BGT/tunneldeel_type/group[type_rel];
+			// attribute<geometries/rdc>         geometry_rd (poly) := geometry[geometries/rdc];
+		// }
+
+		unit<uint32> waterdeel_sec := src/ReadGML/waterdeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/waterdeel_sec.fss'"
+		{
+			attribute<string> CLASS;
+			attribute<typeringen/BGT/waterdeel_type> type_rel           := rlookup(CLASS, typeringen/BGT/waterdeel_type/Label);
+			attribute<uint32>                code               := typeringen/BGT/waterdeel_type/code[type_rel];
+			attribute<uint8>                 group              := typeringen/BGT/waterdeel_type/group[type_rel];
+			attribute<geometries/rdc>              geometry_rd (poly) := geometry[geometries/rdc];
+		}
+
+		unit<uint32> waterdeel // bevat helaas veel overlap
+		:= union_unit(waterdeel_sec, ondersteunendwaterdeel_water)
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/waterdeel_src.fss'"
+		{
+			attribute<typeringen/BGT/waterdeel_type> type_rel           := union_data(., waterdeel_sec/type_rel, ondersteunendwaterdeel_water/type_rel);
+			attribute<uint32>                code               := union_data(., waterdeel_sec/code, ondersteunendwaterdeel_water/code);
+			attribute<uint8>                 group              := union_data(., waterdeel_sec/group, ondersteunendwaterdeel_water/group);
+			attribute<geometries/rdc>              geometry_rd (poly) := union_data(., waterdeel_sec/geometry_rd, ondersteunendwaterdeel_water/geometry_rd);
+
+			container Overlap
+			{
+				unit<uint32> connections := polygon_connectivity(geometry_rd[geometries/rdc_mm])
+				{
+					attribute<geometries/rdc_mm> overlap (poly):= geometry_rd[geometries/rdc_mm][F1] * geometry_rd[geometries/rdc_mm][F2];
+					attribute<float32> area := area(fpolygon(overlap), m2);
+				}
+			}
+		}
+
+		// unit<uint32> waterdeel := split_union_polygon(waterdeel_src/geometry_rd[geometries/rdc_mm])
+		// ,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/waterdeel.fss'"
+		// ,	DialogType      = "Map"
+		// ,	DialogData      = "geometry_rd"
+		// {
+			// attribute<typeringen/BGT/waterdeel_type> type_rel           := const(rlookup('water', typeringen/BGT/waterdeel_type/group_label),.);
+			// attribute<uint32>                code               := typeringen/BGT/waterdeel_type/code[type_rel];
+			// attribute<uint8>                 group              := typeringen/BGT/waterdeel_type/group[type_rel];
+			// attribute<geometries/rdc>              geometry_rd (poly) := geometry[geometries/rdc];
+
+			// container Overlap
+			// {
+				// unit<uint32> connections := polygon_connectivity(geometry_rd[geometries/rdc_mm])
+				// {
+					// attribute<geometries/rdc_mm> overlap (poly):= geometry_rd[geometries/rdc_mm][F1] * geometry_rd[geometries/rdc_mm][F2];
+					// attribute<float32> area := area(fpolygon(overlap), m2);
+				// }
+			// }
+		// }
+
+		unit<uint32> wegdeel := src/ReadGML/wegdeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/wegdeel.fss'"
+		,	SqlString       = "SELECT * FROM wegdeel_gml where relatieveHoogteligging = 0" // Selection for level 0 road parts
+		{
+			attribute<string>                      FUNCTION;
+			attribute<typeringen/BGT/wegdeel_type> type_rel           := rlookup(FUNCTION, typeringen/BGT/wegdeel_type/Label);
+			attribute<uint32>                      code               := typeringen/BGT/wegdeel_type/code[type_rel];
+			attribute<uint8>                       group              := typeringen/BGT/wegdeel_type/group[type_rel];
+			attribute<geometries/rdc>              geometry_rd (poly) := geometry[geometries/rdc];
+			attribute<int32>                       relatieveHoogteligging;
+			attribute<string>                      wegdeelOpTalud;
+			attribute<string>                      plus_functieWegdeel;
+		}
+
+		unit<uint32> wegdeel_brug := src/ReadGML/wegdeel_gml
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/wegdeel_brug.fss'"
+		,	SqlString       = "SELECT * FROM wegdeel where relatieveH > 0" // Selection for level 1 road parts
+		,	DialogType      = "Map"
+		,	DialogData      = "geometry_rd"
+		{
+			attribute<string> FUNCTION;
+			attribute<typeringen/BGT/wegdeel_type> type_rel           := rlookup(const('brug_viaduct',.), typeringen/BGT/wegdeel_type/Label);
+			attribute<uint32>              code               := typeringen/BGT/wegdeel_type/code[type_rel];
+			attribute<uint8>               group              := typeringen/BGT/wegdeel_type/group[type_rel];
+			attribute<geometries/rdc>            geometry_rd (poly) := geometry[geometries/rdc];
+			attribute<string>                      wegdeelOpTalud;
+			
+			unit<uint32> voor_auto := Subset(strcount(function, 'rijbaan') > 0)
+			{
+				attribute<uint32>   code               := wegdeel_brug/code[nr_OrgEntity];
+				attribute<uint32>   group              := wegdeel_brug/group[nr_OrgEntity];
+				attribute<geometries/rdc> geometry_rd (poly) := wegdeel_brug/geometry_rd[nr_OrgEntity];
+			}
+		}
+
+		unit<uint32> vegetatieobject := src/read_shapefiles/vegetatieobject/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/vegetatieobject.fss'"
+		{
+			attribute<string> plus_type;
+			attribute<typeringen/BGT/vegetatieobject_type> type_rel           := rlookup(plus_type, typeringen/BGT/vegetatieobject_type/Label);
+			attribute<uint32>                      code               := typeringen/BGT/vegetatieobject_type/code[type_rel];
+			attribute<uint8>                       group              := typeringen/BGT/vegetatieobject_type/group[type_rel];
+			attribute<geometries/rdc>                    geometry_rd (poly) := geometry[geometries/rdc];
+		}
+
+		unit<uint32> weginrichtingselement := src/read_shapefiles/weginrichtingselement/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/weginrichtingselement.fss'"
+		{
+			attribute<string> plus_type;
+			attribute<typeringen/BGT/weginrichtingselement_type> type_rel           := rlookup(plus_type, typeringen/BGT/weginrichtingselement_type/Label);
+			attribute<uint32>                            code               := typeringen/BGT/weginrichtingselement_type/code[type_rel];
+			attribute<uint8>                             group              := typeringen/BGT/weginrichtingselement_type/group[type_rel];
+			attribute<geometries/rdc>                          geometry_rd (poly) := geometry[geometries/rdc];
+		}
+
+		unit<uint32> kunstwerkdeel := src/read_shapefiles/kunstwerkdeel/shape
+		,	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/kunstwerkdeel.fss'"
+		{
+			attribute<string> plus_type;
+			attribute<typeringen/BGT/kunstwerkdeel_type> type_rel           := rlookup(plus_type, typeringen/BGT/kunstwerkdeel_type/label);
+			attribute<uint32>                    code               := typeringen/BGT/kunstwerkdeel_type/code[type_rel];
+			attribute<uint8>                     group              := typeringen/BGT/kunstwerkdeel_type/group[type_rel];
+			attribute<geometries/rdc>                  geometry_rd (poly) := geometry[geometries/rdc];
+		}
+
+		// unit<uint32> brugdeel := union_unit(overbruggingsdeel , wegdeel_brug)
+		// {
+			// attribute<typeringen/BGT/wegdeel_type> type_rel           := union_data(., overbruggingsdeel/type_rel   , wegdeel_brug/type_rel);
+			// attribute<uint32>              code               := union_data(., overbruggingsdeel/code       , wegdeel_brug/code);
+			// attribute<uint8>               group              := union_data(., overbruggingsdeel/group      , wegdeel_brug/group);
+			// attribute<string>              function           := union_data(., overbruggingsdeel/function, wegdeel_brug/function);
+			// attribute<geometries/rdc>            geometry_rd (poly) := union_data(., overbruggingsdeel/geometry_rd, wegdeel_brug/geometry_rd);
+			// attribute<geometries/rdc_mm>         geometry_mm (poly) := geometry_rd[geometries/rdc_mm];
+		// }
+
+		// unit<uint32> brug := split_union_polygon(brugdeel/geometry_mm)
+		// ,	DialogType = "Map"
+		// ,	DialogData = "geometry_rd"
+		// ,	FreeData   = "False"
+		// {
+			// attribute<geometries/rdc> geometry_rd (poly) := geometry[geometries/rdc];
+			// attribute<uint8>    group              := const(brugdeel/group[0],.);
+			// attribute<string>   function           := brugdeel/function[point_in_polygon(centroid_or_mid(geometry_rd), brugdeel/geometry_rd)];
+			// attribute<uint32>   code               := rjoin(const('overbruggingsdeel_hoortbij_type: brug',.), typeringen/BGT/poly_type/Label, typeringen/BGT/poly_type/code);
+		// }
+	}
+	
+	container ReadFSS
+	{
+		unit<uint32> Combine := 
+			union_unit(
+				gebouwinstallatie
+				, pand
+				, onbegroeidterreindeel
+				, begroeidterreindeel
+				, ondersteunendwaterdeel
+				, ondersteunendwegdeel
+				, waterdeel
+				, wegdeel
+				, ongeclassificeerdobject
+				, overigbouwwerk
+				// , wegdeel_brug
+
+			)
+		,	DialogType = "Map"
+		,	DialogData = "geometry"
+		,	FreeData = "False"
+		,	StorageName = "%LocalDataDir%/BGT/combine.fss"
+		{
+			attribute<geometries/rdc>     geometry (poly)   := 
+				union_data(
+					.
+					, gebouwinstallatie/geometry_rd
+					, pand/geometry_rd
+					, onbegroeidterreindeel/geometry_rd
+					, begroeidterreindeel/geometry_rd
+					, ondersteunendwaterdeel/geometry_rd
+					, ondersteunendwegdeel/geometry_rd
+					, waterdeel/geometry_rd
+					, wegdeel/geometry_rd
+					, ongeclassificeerdobject/geometry_rd
+					, overigbouwwerk/geometry_rd
+					// , wegdeel_brug/geometry_rd
+				);
+			attribute<typeringen/BBG>     bbg_ek            := 
+				union_data(
+					.
+					, gebouwinstallatie/bbg_ek
+					, pand/bbg_ek
+					, onbegroeidterreindeel/bbg_ek
+					, begroeidterreindeel/bbg_ek
+					, ondersteunendwaterdeel/bbg_ek
+					, ondersteunendwegdeel/bbg_ek
+					, waterdeel/bbg_ek
+					, wegdeel/bbg_ek
+					, ongeclassificeerdobject/bbg_ek
+					, overigbouwwerk/bbg_ek
+					// , wegdeel_brug/bbg_ek
+				);
+			attribute<uint32>    code            := 
+				union_data(
+					.
+					, gebouwinstallatie/code
+					, pand/code
+					, onbegroeidterreindeel/code
+					, begroeidterreindeel/code
+					, ondersteunendwaterdeel/code
+					, ondersteunendwegdeel/code
+					, waterdeel/code
+					, wegdeel/code
+					, ongeclassificeerdobject/code
+					, overigbouwwerk/code
+					// , wegdeel_brug/code
+				);
+		}
+		unit<uint32> ReadCombine :
+			DialogType = "Map"
+		,	DialogData = "geometry"
+		,	FreeData = "False"
+		,	StorageName = "%LocalDataDir%/BGT/combine.fss"
+		,	StorageReadOnly = "True" 
+		{
+			attribute<geometries/rdc>     geometry (poly);
+			attribute<typeringen/BBG>     bbg_ek;
+			attribute<uint32>             code;
+			attribute<typeringen/BGT/poly_type> code_rel := rlookup(code, typeringen/BGT/poly_type/code);
+		}
+	
+		unit<uint32> gebouwinstallatie 
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/gebouwinstallatie.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string>                                 plus_typeg;
+			attribute<typeringen/BGT/gebouwinstallatie_type>  type_rel;
+			attribute<uint32>                                 code;
+			attribute<uint8>                                  group;
+			attribute<geometries/rdc>                         geometry_rd (poly);
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/gebouwinstallatie_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		} 
+
+		unit<uint32> functioneelgebied 
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/functioneelgebied.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string>                                 plus_type;
+			attribute<string>                                 BGT_TYPE;
+			attribute<typeringen/BGT/functioneelgebied_type>  type_rel           ;
+			attribute<uint32>                                 code               ;
+			attribute<uint8>                                  group              ;
+			attribute<geometries/rdc>                         geometry_rd (poly) ;
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/functioneelgebied_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> onbegroeidterreindeel 
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/onbegroeidterreindeel.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string>                                    BGT_FYSIEK;
+			attribute<typeringen/BGT/onbegroeidterreindeel_type> type_rel   ;
+			attribute<uint32>                                    code               ;
+			attribute<uint8>                                     group              ;
+			attribute<geometries/rdc>                            geometry_rd (poly) ;
+			attribute<string>                                    onbegroeidterreindeelOpTalud;
+			attribute<bool>                                      OpTalud    := onbegroeidterreindeelOpTalud == 'false' ? FALSE : onbegroeidterreindeelOpTalud == 'true' ? TRUE : FALSE; 
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/onbegroeidterreindeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> begroeidterreindeel
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/begroeidterreindeel.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string>                                                           Class;
+			attribute<typeringen/BGT/begroeidterreindeel_type>                          type_rel;
+			attribute<uint32>                                                           code;
+			attribute<uint8>                                                            group;
+			attribute<string>                    begroeidterreindeelOpTalud;
+			attribute<bool>                                      OpTalud    := begroeidterreindeelOpTalud == 'false' ? FALSE : begroeidterreindeelOpTalud == 'true' ? TRUE : FALSE; 
+			
+			attribute<uint8>                                                            bbg_code              := typeringen/BGT/begroeidterreindeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                                                   bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+			
+			attribute<geometries/rdc>                                                   geometry_rd (poly);
+			attribute<geometries/rdc>                                                   centroid              := centroid_or_mid(geometry_rd);
+			attribute<float32>                                                          area                  := abs(area(geometry_rd, float32));
+			
+			attribute<CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes>         BegBebGeb_rel         := point_in_polygon(centroid, CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes/Geometry);
+			
+			unit<uint32>  Groen := subset(typeringen/BGT/begroeidterreindeel_type/IsVoorBereikbaarheidGroen[type_rel])
+			,	DialogType = "Map"
+			,	DialogData = "geometry_rd"
+			{
+				attribute<geometries/rdc>   geometry_rd (poly)                    := begroeidterreindeel/geometry_rd[nr_OrgEntity];
+				attribute<typeringen/BBG>   bbg_ek                                := begroeidterreindeel/bbg_ek[nr_OrgEntity];
+				attribute<float32>          area                                  := area(geometry_rd, float32);
+				
+				attribute<Groen>            per_grid     (NL_grid/domain_10m)     := poly2grid(geometry_rd, NL_grid/domain_10m);
+				attribute<float32>          per_ha       (NL_grid/domain)         := count(per_grid, NL_grid/domain_10m/grid_100m_rel)[float32] / 100f;
+				
+				attribute<float32>          per_ha_point (NL_grid/points)         := per_ha[NL_grid/points/NL_grid_domain_rel];
+				
+				unit<uint32>  ha_met_groen := subset(per_ha_point > 0f)
+				, DialogData = "geometry"
+				, DialogType = "map"
+				{
+					attribute<geometries/rdc>    geometry      := NL_grid/points/geometry[nr_OrgEntity];
+					attribute<float32>           per_ha_point  := groen/per_ha_point[nr_OrgEntity];
+				}
+			}
+			
+			
+			unit<uint32>  NietParken := subset(!IsDefined(begroeidterreindeel/BegBebGeb_rel) && begroeidterreindeel/bbg_ek == 15[typeringen/BBG])
+			,	DialogType = "Map"
+			,	DialogData = "geometry_rd"
+			{
+				attribute<geometries/rdc>   geometry_rd (poly) := begroeidterreindeel/geometry_rd[nr_OrgEntity];
+				attribute<typeringen/BBG>   bbg_ek             := begroeidterreindeel/bbg_ek[nr_OrgEntity];
+			}
+		}
+
+		unit<uint32> ondersteunendwaterdeel
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ondersteunendwaterdeel.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> Class;
+			attribute<typeringen/BGT/ondersteunendwaterdeel_type> type_rel;
+			attribute<uint32>                             code ;
+			attribute<uint8>                              group   ;
+			attribute<geometries/rdc>                           geometry_rd  (poly);
+			attribute<string>                    ondersteunendwaterdeelOpTalud;
+			attribute<bool>                                      OpTalud    := ondersteunendwaterdeelOpTalud == 'false' ? FALSE : ondersteunendwaterdeelOpTalud == 'true' ? TRUE : FALSE; 
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/ondersteunendwaterdeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> ondersteunendwegdeel
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ondersteunendwegdeel.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string>                                   FUNCTION;
+			attribute<typeringen/BGT/ondersteunendwegdeel_type> type_rel;
+			attribute<uint32>                                   code;
+			attribute<uint8>                                    group;
+			attribute<geometries/rdc>                           geometry_rd (poly);
+			attribute<string>                    ondersteunendwegdeelOpTalud;
+			attribute<bool>                                      OpTalud    := ondersteunendwegdeelOpTalud == 'false' ? FALSE : ondersteunendwegdeelOpTalud == 'true' ? TRUE : FALSE; 
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/ondersteunendwegdeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+			
+			attribute<float32>                                 area := area(geometry_rd, m2);
+		}
+
+		unit<uint32> ongeclassificeerdobject
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/ongeclassificeerdobject.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> plus_statu;
+			attribute<typeringen/BGT/ongeclassificeerdobject_type> type_rel  ;
+			attribute<uint32>                              code;
+			attribute<uint8>                               group;
+			attribute<geometries/rdc>                            geometry_rd  (poly);
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/ongeclassificeerdobject_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> overigbouwwerk
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/overigbouwwerk.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> plus_type;
+			attribute<string> BGT_type;
+			attribute<string>                      class ;
+			attribute<typeringen/BGT/bouwwerk_overig_type> type_rel;
+			attribute<uint32>                      code;
+			attribute<uint8>                       group;
+			attribute<geometries/rdc>                    geometry_rd (poly);
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/bouwwerk_overig_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> pand := BAG/Snapshots/Panden/pand_vbo
+		,	SyncMode = "none"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<geometries/rdc>            geometry_rd (poly)   := Geometry;
+			// attribute<typeringen/BGT/pand_type>  type_rel             := const(0[typeringen/BGT/pand_type],pand);
+			attribute<uint32>                    code                 := rjoin(bbg_ek, typeringen/BGT/pand_type/bbg_code, typeringen/BGT/pand_type/code);
+			// attribute<uint8>                     group                := typeringen/BGT/pand_type/group[type_rel];
+			
+			attribute<typeringen/BBG>            bbg_ek                 := type; 
+			
+			// attribute<uint8>                     bbg_code             := typeringen/BGT/pand_type/bbg_code[type_rel];
+			// attribute<typeringen/BBG>            bbg_ek               := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> waterdeel // bevat helaas veel overlap
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/waterdeel_src.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType      = "Map"
+		,	DialogData      = "geometry_rd"
+		{
+			attribute<typeringen/BGT/waterdeel_type> type_rel;
+			attribute<uint32>                code;
+			attribute<uint8>                 group;
+			attribute<geometries/rdc>              geometry_rd (poly);
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/waterdeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+			
+			attribute<geometries/rdc>                                                   centroid              := centroid(geometry_rd), FreeData = "False";
+			attribute<CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes>         BegBebGeb_rel         := point_in_polygon(centroid, CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes/Geometry), FreeData = "False";
+			
+		}
+	
+		unit<uint32> wegdeel
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/wegdeel.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> FUNCTION;
+			unit<uint32> function_uq := unique(function);
+			attribute<typeringen/BGT/wegdeel_type> type_rel ;
+			attribute<uint32>              code;
+			attribute<uint8>               group  ;
+			attribute<geometries/rdc>            geometry_rd (poly);
+			attribute<string>                      wegdeelOpTalud;
+			attribute<bool>                                      OpTalud    := wegdeelOpTalud == 'false' ? FALSE : wegdeelOpTalud == 'true' ? TRUE : FALSE; 
+			
+
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/wegdeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+			
+			container MaakLosseCat :=
+				for_each_ne(
+					/typeringen/BGT/wegdeel_type/name
+					, 'per_typeT(' +string(id(typeringen/BGT/wegdeel_type))+ ')'
+				);
+				
+			Template per_typeT
+			{
+				///
+				parameter</typeringen/BGT/wegdeel_type> type_rel;
+				///
+			
+				unit<uint32> vlak := subset(wegdeel/type_rel == type_rel)
+				,	DialogType = "Map"
+				,	DialogData = "geometry_rd"
+				{
+					attribute<geometries/rdc>                             geometry_rd (poly)    := wegdeel/geometry_rd[nr_OrgEntity];
+					// attribute<typeringen/brt/visualisatiecodes>           Visualisatiecodes_rel := wegdeel/Visualisatiecodes_rel[nr_OrgEntity];
+					// attribute<int32>                                      Visualisat            := wegdeel/Visualisat[nr_OrgEntity];
+				}
+			}
+			
+			
+		}
+		
+		
+		unit<uint32> wegdeel_brug
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/wegdeel_brug.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> FUNCTION;
+			unit<uint32> function_uq := unique(function);
+			attribute<typeringen/BGT/wegdeel_type> type_rel ;
+			attribute<uint32>              code;
+			attribute<uint8>               group  ;
+			attribute<geometries/rdc>            geometry_rd (poly);
+			attribute<string>                      wegdeelOpTalud;
+			attribute<bool>                                      OpTalud    := wegdeelOpTalud == 'false' ? FALSE : wegdeelOpTalud == 'true' ? TRUE : FALSE; 
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/wegdeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> vegetatieobject 
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/vegetatieobject.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> plus_type;
+			attribute<typeringen/BGT/vegetatieobject_type> type_rel   ;
+			attribute<uint32>                      code  ;
+			attribute<uint8>                       group ;
+			attribute<geometries/rdc>                    geometry_rd (poly) ;
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/vegetatieobject_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> weginrichtingselement
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/weginrichtingselement.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> plus_type;
+			attribute<typeringen/BGT/weginrichtingselement_type> type_rel ;
+			attribute<uint32>                            code;
+			attribute<uint8>                             group ;
+			attribute<geometries/rdc>                          geometry_rd (poly);
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/weginrichtingselement_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+
+		unit<uint32> kunstwerkdeel 
+		:	StorageName     = "='%SourceDataDir%/BGT/'+filedate+'/fss/kunstwerkdeel.fss'"
+		,	StorageReadOnly = "True"
+		,	DialogType = "Map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<string> plus_type;
+			attribute<typeringen/BGT/kunstwerkdeel_type> type_rel ;
+			attribute<uint32>                    code ;
+			attribute<uint8>                     group ;
+			attribute<geometries/rdc>                  geometry_rd (poly);
+			
+			attribute<uint8>                                   bbg_code              := typeringen/BGT/kunstwerkdeel_type/bbg_code[type_rel];
+			attribute<typeringen/BBG>                          bbg_ek                := rlookup(bbg_code, typeringen/BBG/bbg_ek);
+		}
+	}
+	
+}

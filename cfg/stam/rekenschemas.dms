@@ -1,0 +1,172 @@
+container rekenschemas: isHidden = "True", using = "eenheden"
+{ 
+	#include <netwerk.dms>
+	
+	Template MakeNetwerkType_T_DELETE
+	{
+		parameter<string> NetwerkType;
+		
+		unit<uint32> land_road := ='Subset(Wegen/IsPartOf'+NetwerkType+'Network)'
+		,	DialogData  = "line"
+		,	DialogType  = "Map"
+		{
+			attribute<geometries/rdc>                line (arc) := Wegen/geometry[nr_OrgEntity];
+			attribute<typeringen/OSM/wegtype>        wegtype    := Wegen/wegtype[nr_OrgEntity];
+			attribute<int32>                         maxspeed   := Wegen/maxspeed[nr_OrgEntity];
+			attribute<float32>                       congestion_speed_MorningRush := Wegen/congestion_speed_MorningRush[nr_OrgEntity];
+			attribute<float32>                       congestion_flow_MorningRush  := Wegen/congestion_flow_MorningRush[nr_OrgEntity];
+			attribute<float32>                       congestion_speed_NoonRush := Wegen/congestion_speed_NoonRush[nr_OrgEntity];
+			attribute<float32>                       congestion_flow_NoonRush  := Wegen/congestion_flow_NoonRush[nr_OrgEntity];
+		}
+		
+		unit<uint32> ferry := ='Subset(boat/link/isPartOf'+NetwerkType+'Network)'
+		,	DialogData  = "line"
+		,	DialogType  = "Map"
+		{
+			attribute<geometries/rdc>                line (arc) := boat/link/line[nr_OrgEntity];
+			attribute<typeringen/OSM/wegtype>        wegtype    := boat/link/wegtype[nr_OrgEntity];
+			attribute<int32>                         maxspeed   := const((0/0),.,int32);
+		}
+	
+		unit<uint32> road := Union_Unit(land_road, ferry)
+		,	DialogData  = "geometry"
+		,	DialogType  = "Map"
+		{
+			attribute<geometries/rdc>                geometry (arc)   := Union_Data(road, land_road/line , ferry/line);
+			attribute<typeringen/OSM/wegtype>        wegtype          := Union_Data(road, land_road/wegtype, ferry/wegtype);
+			attribute<int32>                         maxspeed         := Union_Data(road, land_road/maxspeed, ferry/maxspeed);
+			attribute<float32>                       congestion_speed_MorningRush := Union_Data(road, land_road/congestion_speed_MorningRush, const((0/0),ferry,float32));
+			attribute<float32>                       congestion_flow_MorningRush  := Union_Data(road, land_road/congestion_flow_MorningRush, const((0/0),ferry,float32));
+			attribute<float32>                       congestion_speed_NoonRush := Union_Data(road, land_road/congestion_speed_NoonRush, const((0/0),ferry,float32));
+			attribute<float32>                       congestion_flow_NoonRush  := Union_Data(road, land_road/congestion_flow_NoonRush, const((0/0),ferry,float32));
+		}
+		
+		container preperation
+		{
+			unit<uint32> road_segments_not_unique  := arc2segm(road/geometry)
+			,	DialogData  = "point"
+			,	DialogType  = "Map"
+			{
+				attribute<geometries/rdc>               point;
+				attribute<geometries/rdc>               nextpoint;
+				attribute<string>                       key              := String(pointRow(point)) + '_' + String(pointCol(point)) + '_' + String(pointRow(nextpoint)) + '_'+ String(pointCol(nextpoint));
+				attribute<road>                         SequenceNr;
+				attribute<typeringen/OSM/wegtype>       wegtype          := road/wegtype[SequenceNr];
+				attribute<int32>                        maxspeed         := road/maxspeed[SequenceNr];
+				attribute<float32>                      congestion_speed_MorningRush := road/congestion_speed_MorningRush[SequenceNr];
+				attribute<float32>                      congestion_flow_MorningRush  := road/congestion_flow_MorningRush[SequenceNr];
+				attribute<float32>                      congestion_speed_NoonRush := road/congestion_speed_NoonRush[SequenceNr];
+				attribute<float32>                      congestion_flow_NoonRush  := road/congestion_flow_NoonRush[SequenceNr];
+			}
+			// In de OSM komen bepaalde wegen en wegsegmenten dubbel voor, deze leiden tot problemen bij het bepalen van het type kruispunt
+			// vandaar dat ze hier uit de selectie worden gehaald.
+			
+			unit <uint32> road_segments := unique(road_segments_not_unique/key)
+			,	DialogData = "point"
+			,	DialogType = "Map"
+			,	FreeData = "false"
+			{
+				attribute<geometries/rdc>                point            := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/point);
+				attribute<geometries/rdc>                nextpoint        := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/nextpoint);
+				attribute<typeringen/OSM/wegtype>        wegtype          := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/wegtype);
+				attribute<int32>                         maxspeed         := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/maxspeed);
+				attribute<float32>                       congestion_speed_MorningRush := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/congestion_speed_MorningRush);
+				attribute<float32>                       congestion_flow_MorningRush  := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/congestion_flow_MorningRush);
+				attribute<float32>                       congestion_speed_NoonRush := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/congestion_speed_NoonRush);
+				attribute<float32>                       congestion_flow_NoonRush  := rjoin(values, road_segments_not_unique/key, road_segments_not_unique/congestion_flow_NoonRush);
+	
+				unit<uint32> pointset  := union_unit(road_segments, road_segments)
+				{
+					attribute<geometries/rdc>      point    := Union_Data(pointset, road_segments/point, road_segments/nextpoint);
+					attribute<road_segments>       ArcID    := value(ID(pointset) % nrofrows(road_segments), road_segments);
+					attribute<uint32>              VolgNr   := ID(pointset) / nrofrows(road_segments);
+				}
+				attribute<geometries/rdc> line(arc)  := points2sequence(pointset/point, pointset/ArcID, pointset/VolgNr);
+			}
+			
+			unit<uint32> extra_links  := union_unit(ExtraVerbindingen/link, ExtraCarToAbroad/link)
+			{
+				attribute<geometries/rdc>                line (arc)  := union_data(., ExtraVerbindingen/link/line, ExtraCarToAbroad/link/line);
+				attribute<typeringen/OSM/wegtype>        wegtype     := union_data(., ExtraVerbindingen/link/wegtype, ExtraCarToAbroad/link/wegtype);
+				attribute<int32>                         maxspeed    := union_data(., ExtraVerbindingen/link/maxspeed, ExtraCarToAbroad/link/maxspeed);
+			}
+			
+			
+			unit<uint32> extra_nodes := union_unit(ExtraVerbindingen/nodes, ExtraCarToAbroad/nodes)
+			{
+				attribute<geometries/rdc> location  := union_data(., ExtraVerbindingen/nodes/UnionData, ExtraCarToAbroad/nodes/UnionData);
+			}
+			unit<uint32> road_segments_with_extra_nodes := connect(road_segments/line, extra_nodes/location)
+			,	isHidden = "True"
+			,	FreeData = "False"
+			{
+				attribute<geometries/rdc>               UnionData (arc);
+				attribute<typeringen/OSM/wegtype>       wegtype          := MakeDefined(road_segments/wegtype[nr_OrgEntity], value(69,typeringen/OSM/wegtype));
+				attribute<int32>                        maxspeed         := road_segments/maxspeed[nr_OrgEntity];
+				attribute<float32>                      congestion_speed_MorningRush := road_segments/congestion_speed_MorningRush[nr_OrgEntity];
+				attribute<float32>                      congestion_flow_MorningRush  := road_segments/congestion_flow_MorningRush[nr_OrgEntity];
+				attribute<float32>                      congestion_speed_NoonRush := road_segments/congestion_speed_NoonRush[nr_OrgEntity];
+				attribute<float32>                      congestion_flow_NoonRush  := road_segments/congestion_flow_NoonRush[nr_OrgEntity];
+			}
+
+		}
+		
+		unit <uint32> Make_all  := ='union_unit(preperation/road_segments_with_extra_nodes, preperation/extra_links, Abroad/Main_RegionsCombined/'+NetwerkType+')'
+		,	DialogData  = "line"
+		,	DialogType  = "Map"
+		,	FreeData    = "False"
+		,	StorageName = "= '%LocalDataDir%/NLDB/'+NetwerkType+'_network_'+file_date+'.fss'"
+		{
+			attribute<geometries/rdc>               line (arc)       := ='union_data(., preperation/road_segments_with_extra_nodes/UnionData, preperation/extra_links/line,    Abroad/Main_RegionsCombined/'+NetwerkType+'/line)';
+			attribute<typeringen/OSM/wegtype>       wegtype          := ='union_data(., preperation/road_segments_with_extra_nodes/wegtype,   preperation/extra_links/wegtype, Abroad/Main_RegionsCombined/'+NetwerkType+'/wegtype)';
+			attribute<int32>                        maxspeed_src     := ='union_data(., preperation/road_segments_with_extra_nodes/maxspeed,   preperation/extra_links/maxspeed, Abroad/Main_RegionsCombined/'+NetwerkType+'/maxspeed)';
+			attribute<int32>                        maxspeed         := maxspeed_src == 0i ? (0/0)[int32] : maxspeed_src;
+			attribute<float32>                      congestion_speed_MorningRush := ='union_data(., preperation/road_segments_with_extra_nodes/congestion_speed_MorningRush,  const((0/0), preperation/extra_links, float32),  const((0/0), Abroad/Main_RegionsCombined/'+NetwerkType+', float32))';
+			attribute<float32>                      congestion_flow_MorningRush  := ='union_data(., preperation/road_segments_with_extra_nodes/congestion_flow_MorningRush ,  const((0/0), preperation/extra_links, float32),  const((0/0), Abroad/Main_RegionsCombined/'+NetwerkType+', float32))';
+			attribute<float32>                      congestion_speed_NoonRush := ='union_data(., preperation/road_segments_with_extra_nodes/congestion_speed_NoonRush,  const((0/0), preperation/extra_links, float32),  const((0/0), Abroad/Main_RegionsCombined/'+NetwerkType+', float32))';
+			attribute<float32>                      congestion_flow_NoonRush  := ='union_data(., preperation/road_segments_with_extra_nodes/congestion_flow_NoonRush ,  const((0/0), preperation/extra_links, float32),  const((0/0), Abroad/Main_RegionsCombined/'+NetwerkType+', float32))';
+			attribute<.>                            id               := id(.);
+			attribute<string>                       wegtype_label    := /typeringen/OSM/wegtype/Label[wegtype];
+		}
+		
+		unit <uint32> Make_NL  := ='union_unit(preperation/road_segments_with_extra_nodes, preperation/extra_links)'
+		,	DialogData  = "line"
+		,	DialogType  = "Map"
+		,	FreeData    = "False"
+		,	StorageName = "= '%LocalDataDir%/NLDB/'+NetwerkType+'_network_'+file_date+'_NL.fss'"
+		{
+			attribute<geometries/rdc>               geometry (arc)       := union_data(., preperation/road_segments_with_extra_nodes/UnionData, preperation/extra_links/line);
+			attribute<typeringen/OSM/wegtype>       wegtype          := union_data(., preperation/road_segments_with_extra_nodes/wegtype,   preperation/extra_links/wegtype);
+			attribute<int32>                        maxspeed_src     := union_data(., preperation/road_segments_with_extra_nodes/maxspeed,   preperation/extra_links/maxspeed), DisableStorage = "true";
+			attribute<int32>                        maxspeed         := maxspeed_src == 0i ? (0/0)[int32] : maxspeed_src;
+			
+			unit<uint32> Motorways := subset(wegtype == /typeringen/OSM/wegtype/V/motorway || wegtype == /typeringen/OSM/wegtype/V/motorway_link)
+			,	DialogData  = "geometry"
+			,	DialogType  = "Map"
+			,	FreeData    = "False"
+			{
+				attribute<geometries/rdc>               geometry (arc)       := ../geometry[nr_OrgEntity];
+				attribute<typeringen/OSM/wegtype>       roadtype             := ../wegtype[nr_OrgEntity];
+				attribute<int32>                        maxspeed             := ../maxspeed[nr_OrgEntity];
+				attribute<..>                           nr_OrgEntity         : DisableStorage = "true";
+			}
+		}
+		
+		unit<uint32> all 
+		:	DialogData  = "line"
+		,	DialogType  = "Map"
+		,	StorageName = "= '%LocalDataDir%/NLDB/'+NetwerkType+'_network_'+file_date+'.fss'"
+		,	StorageReadOnly = "true"
+		{
+			attribute<geometries/rdc>               line (arc);
+			attribute<typeringen/OSM/wegtype>       wegtype;
+			attribute<string>                       wegtype_label;
+			attribute<int32>                        maxspeed;
+			attribute<float32>                      congestion_speed_MorningRush;
+			attribute<float32>                      congestion_flow_MorningRush;
+			attribute<float32>                      congestion_speed_NoonRush;
+			attribute<float32>                      congestion_flow_NoonRush;
+		}
+	}
+	
+}

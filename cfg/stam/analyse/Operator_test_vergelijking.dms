@@ -1,0 +1,48 @@
+container Operator_test_vergelijking : using = "eenheden;geometries", freedata = "false"
+{ 
+	unit<uint32> Bevolkingskernen_dom := Brondata/CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes;
+	unit<uint32> Spoorbaan_dom        := /Brondata/BRT/ReadFSS/MaakLosseCat/spoor_vlak_spoorbaanlichaam/vlak;
+	
+	
+	attribute<geometries/rdc> bevolkingskernen          (poly, Bevolkingskernen_dom) := Bevolkingskernen_dom/Geometry;
+	attribute<geometries/rdc> spoorbanen                (poly, Spoorbaan_dom)        := Spoorbaan_dom/geometry_rd;
+		
+	attribute<ipoint>         buffer_BK_5m              (poly, Bevolkingskernen_dom) := polygon_i4D(bevolkingskernen[ipoint], 5d);
+	attribute<ipoint>         buffer_BK_500m            (poly, Bevolkingskernen_dom) := polygon_i4D(bevolkingskernen[ipoint], 500d);
+	parameter<ipoint>         dissolve_bevolkingskernen (poly)                       := union_polygon(bevolkingskernen[ipoint]);
+	parameter<ipoint>         dissolve_spoorbanen       (poly)                       := union_polygon(spoorbanen[ipoint]);
+		
+	parameter<ipoint>         clip_BK_SB                (poly)                       := dissolve_bevolkingskernen - dissolve_spoorbanen;
+		
+	unit<uint32>              intersect_BK_SB                 := overlay_polygon(buffer_BK_500m, spoorbanen[ipoint])
+	{
+		attribute<ipoint> geometry (poly);
+	}
+	
+	container Dijkstra
+	{
+		container NetwerkSpec :=
+			rekenschemas/netwerk(
+				  Brondata/CBS/regios/Postcode_gebieden/Postcode4_punten 
+				, Brondata/CBS/regios/Postcode_gebieden/Postcode4_punten 
+				, Brondata/OSM/NetworkPreperation/car/All
+				, Brondata/CBS/regios/Postcode_gebieden/Postcode4_punten/Geometry
+				, Brondata/CBS/regios/Postcode_gebieden/Postcode4_punten/Geometry
+				, Brondata/OSM/NetworkPreperation/car/All/line
+				, 'car'
+			), FreeData = "false";
+	
+		unit<uint64> OD_limit_traveltime := 
+			dijkstra_m64('directed;startPoint(Node_rel);endPoint(Node_rel);cut(OrgZone_max_imp);interaction(v_i,w_j,dist_decay):D_i'
+				, NetwerkSpec/OrgToDest/impedance
+				, NetwerkSpec/OrgToDest/F1
+				, NetwerkSpec/OrgToDest/F2
+				
+				, NetwerkSpec/OrgToDest/nr_orgNode
+				, NetwerkSpec/OrgToDest/nr_destNode
+				
+				, 1800f        //cut OrgZone_max_imp
+				, 1f, Brondata/CBS/regios/Postcode_gebieden/Postcode4_punten/inwoners[float32], 0f  // v_i, w_j, dist_decay
+			);
+	}
+}

@@ -1,0 +1,132 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container BAG
+{
+	container src: = Brondata/BAG/Snapshots;
+
+	container pointsets
+	{
+		unit<uint32> pand        := Sequence2Points(src/Panden/Pand2018/geometry);
+		unit<uint32> woonplaats  := Sequence2Points(src/Woonplaatsen/Woonplaats2018/geometry);
+		unit<uint32> standplaats := Sequence2Points(src/Standplaatsen/Standplaats2018/geometry);
+		unit<uint32> ligplaats   := Sequence2Points(src/Ligplaatsen/Ligplaats2018/geometry);
+	}
+
+	unit<uint32> pand:=
+		Subset(
+			any(
+				   PointCol(pointsets/pand/point) >= X_min
+				&& PointCol(pointsets/pand/point) <= X_max
+				&& PointRow(pointsets/pand/point) >= Y_min
+				&& PointRow(pointsets/pand/point) <= Y_max
+				, pointsets/pand/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pand.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "geometry"
+	{
+		attribute<string>   pand_id      := src/Panden/pand2018/identificatie[nr_OrgEntity];
+		attribute<int16>    bouwjaar_int := src/Panden/pand2018/bouwjaar[nr_OrgEntity];
+
+		attribute<geometries/rdc> geometry(polygon): = src/Panden/pand2018/geometry[nr_OrgEntity];
+	}
+	
+	unit<uint32> standplaats:=
+		Subset(
+			any(
+				   PointCol(pointsets/standplaats/point) >= X_min
+				&& PointCol(pointsets/standplaats/point) <= X_max
+				&& PointRow(pointsets/standplaats/point) >= Y_min
+				&& PointRow(pointsets/standplaats/point) <= Y_max
+				, pointsets/standplaats/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/standplaats.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "geometry"
+	{
+		attribute<string>           sta_id            := src/Standplaatsen/Standplaats2018/identificatie[nr_OrgEntity];
+		attribute<geometries/rdc>   geometry(polygon) := src/Standplaatsen/Standplaats2018/geometry[nr_OrgEntity];
+	}
+	unit<uint32> ligplaats:=
+		Subset(
+			any(
+				   PointCol(pointsets/ligplaats/point) >= X_min
+				&& PointCol(pointsets/ligplaats/point) <= X_max
+				&& PointRow(pointsets/ligplaats/point) >= Y_min
+				&& PointRow(pointsets/ligplaats/point) <= Y_max
+				, pointsets/ligplaats/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/ligplaats.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "geometry"
+	{
+		attribute<string>          lig_id            := src/ligplaatsen/Ligplaats2018/identificatie[nr_OrgEntity];
+		attribute<geometries/rdc>  geometry(polygon) := src/ligplaatsen/Ligplaats2018/geometry[nr_OrgEntity];
+	}
+
+	unit<uint32> verblijfs_object:=
+		Subset(
+			   PointCol(src/vbos/vbo2018/geometry) >= X_min
+			&& PointCol(src/vbos/vbo2018/geometry) <= X_max
+			&& PointRow(src/vbos/vbo2018/geometry) >= Y_min
+			&& PointRow(src/vbos/vbo2018/geometry) <= Y_max
+		)
+	,	DialogType  = "Map"
+	,	DialogData  = "geometry"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/verblijfs_object.fss'"
+	{
+		attribute<geometries/rdc> geometry    := src/vbos/vbo2018/geometry[nr_OrgEntity];
+
+		attribute<string> verblijfs_object_id := src/vbos/vbo2018/identificatie[nr_OrgEntity];
+		attribute<m2>     oppervlakte         := value(src/vbos/vbo2018/oppervlakte[nr_OrgEntity], m2);
+
+		attribute<bool>   is_woon             := src/vbos/vbo2018/gebruiksdoelen/woon[nr_OrgEntity];
+		attribute<bool>   is_winkel           := src/vbos/vbo2018/gebruiksdoelen/winkel[nr_OrgEntity];
+		attribute<bool>   is_logies           := src/vbos/vbo2018/gebruiksdoelen/logies[nr_OrgEntity];
+		attribute<bool>   is_gezondheidszorg  := src/vbos/vbo2018/gebruiksdoelen/gezondheidszorg[nr_OrgEntity];
+		attribute<bool>   is_kantoor          := src/vbos/vbo2018/gebruiksdoelen/kantoor[nr_OrgEntity];
+		attribute<bool>   is_bijeenkomst      := src/vbos/vbo2018/gebruiksdoelen/bijeenkomst[nr_OrgEntity];
+		attribute<bool>   is_onderwijs        := src/vbos/vbo2018/gebruiksdoelen/onderwijs[nr_OrgEntity];
+		attribute<bool>   is_industrie        := src/vbos/vbo2018/gebruiksdoelen/industrie[nr_OrgEntity];
+		attribute<bool>   is_overige_gebruiks := src/vbos/vbo2018/gebruiksdoelen/overige_gebruiks[nr_OrgEntity];
+		attribute<bool>   is_sport            := src/vbos/vbo2018/gebruiksdoelen/sport[nr_OrgEntity];
+		attribute<bool>   is_cel              := src/vbos/vbo2018/gebruiksdoelen/cel[nr_OrgEntity];
+
+		attribute<string> straatnaam          := src/vbos/vbo2018/straatnaam[nr_OrgEntity];
+		attribute<uint32> huisnummer          := uint32(src/vbos/vbo2018/huisnummer[nr_OrgEntity]);
+		attribute<string> huisletter          := src/vbos/vbo2018/huisletter[nr_OrgEntity];
+		attribute<string> toevoeging          := src/vbos/vbo2018/toevoeging[nr_OrgEntity];
+		attribute<string> postcode            := src/vbos/vbo2018/postcode[nr_OrgEntity];
+		attribute<string> woonplaats          := src/vbos/vbo2018/woonplaatsNaam[nr_OrgEntity];
+		attribute<string> gemeente            := Brondata/CBS/regios/gemeenten/gem_src/j2017/Label[point_in_polygon(geometry, Brondata/CBS/regios/gemeenten/gem_src/j2017/geometry)];
+	}
+
+	unit<uint32> woonplaats:=
+		Subset(
+			any(
+				   PointCol(pointsets/woonplaats/point) >= X_min
+				&& PointCol(pointsets/woonplaats/point) <= X_max
+				&& PointRow(pointsets/woonplaats/point) >= Y_min
+				&& PointRow(pointsets/woonplaats/point) <= Y_max
+				, pointsets/woonplaats/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/woonplaats.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "geometry"
+	{
+		attribute<string>           label              := src/woonplaatsen/woonplaats2018/woonplaatsnaam[nr_OrgEntity];
+		attribute<geometries/rdc>   geometry (polygon) := src/woonplaatsen/woonplaats2018/geometry[nr_OrgEntity];
+	}
+}

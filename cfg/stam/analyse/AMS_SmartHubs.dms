@@ -1,0 +1,35 @@
+container AMS_SmartHubs: using = "eenheden;typeringen"
+{
+	unit<uint32> BRT_zonderGebouwen := /Brondata/BRT/ReadFSS_perYear/d20210601/ReadFSS/LU_ordered_zGebouwen
+	{
+		attribute<geometries/rdc>                             geometry (poly)       := /Brondata/BRT/ReadFSS_perYear/d20210601/ReadFSS/LU_ordered_zGebouwen/geometry;
+		attribute<typeringen/brt/visualisatiecodes>           visualisatiecodes_rel := /Brondata/BRT/ReadFSS_perYear/d20210601/ReadFSS/LU_ordered_zGebouwen/visualisatiecodes_rel;
+		attribute<BRT_BAG_Typeringen>                         BRT_BAG_Typeringen_rel := rlookup(typeringen/brt/visualisatiecodes/name[visualisatiecodes_rel], BRT_BAG_Typeringen/name_src);
+	}
+	
+	unit<uint32> BAG_panden := /Brondata/BAG/Snapshots/Panden/pand_vbo
+	{
+		attribute<geometries/rdc>                             geometry (polygon)    :=  /Brondata/BAG/Snapshots/Panden/pand_vbo/geometry;
+		attribute<vbo_gebruiksdoel>                           DominantFunction      :=  /Brondata/BAG/Snapshots/Panden/pand_vbo/DominantFunction;
+		attribute<BRT_BAG_Typeringen>                         BRT_BAG_Typeringen_rel := rlookup(vbo_gebruiksdoel/name[DominantFunction], BRT_BAG_Typeringen/name_src);
+	}
+	
+	unit<uint32> BRT_BAG_Combi := union_unit(BRT_zonderGebouwen, BAG_panden)
+	{
+		attribute<geometries/rdc>                             geometry (polygon)     := union_data(., BRT_zonderGebouwen/geometry, BAG_panden/geometry);
+		attribute<BRT_BAG_Typeringen>                         BRT_BAG_Typeringen_rel := union_data(., BRT_zonderGebouwen/BRT_BAG_Typeringen_rel, BAG_panden/BRT_BAG_Typeringen_rel);
+		attribute<string>                                     name                   := BRT_BAG_Typeringen/name[BRT_BAG_Typeringen_rel];
+	}
+
+	unit<uint32> BRT_BAG_Typeringen := union_unit(brt/visualisatiecodes, vbo_gebruiksdoel)
+	{
+		attribute<string> name_src := union_data(., brt/visualisatiecodes/name, vbo_gebruiksdoel/name);
+		attribute<string> source   := union_data(., const('BRT', brt/visualisatiecodes), const('BAG', vbo_gebruiksdoel));
+		attribute<strinG> name     := source + '_' + name_src;
+		attribute<string> label    := name, DialogType = "LabelText";
+		attribute<uint32> BrushColor := union_data(., brt/visualisatiecodes/BrushColor, vbo_gebruiksdoel/BrushColor), DialogType = "BrushColor";
+		attribute<uint32> PenColor   := BrushColor , DialogType = "PenColor";
+
+	}
+
+}

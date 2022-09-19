@@ -1,0 +1,636 @@
+container NLDB
+{
+	container MaakOntkoppeldeData
+	{
+		container FirstUse
+		{
+			parameter<String> Generate_All := 'Ready',
+			ExplicitSuppliers = "RegioIndelingen/Generate_Provincies;RegioIndelingen/Generate_Gemeenten;RegioIndelingen/Generate_PC6;OSM/Generate_OSM_NL;OSM/Generate_OSM_Car;OSM/Generate_OSM_Bike;OSM/Generate_OSM_Pedestrian;LISA/Generate_LISA";
+		}
+		container RegioIndelingen
+		{
+			parameter<String> Generate_Provincies := 'Ready',
+			ExplicitSuppliers = "Brondata/CBS/regios/provincies/Create_2012_FSS/Geometry;Brondata/CBS/regios/provincies/Create_2012_FSS/grid;Brondata/CBS/regios/provincies/Create_2012_FSS/Label";
+			parameter<String> Generate_Gemeenten := 'Ready',
+			ExplicitSuppliers = "Brondata/CBS/regios/gemeenten/gem_src/Create_j2019_FSS/Geometry;Brondata/CBS/regios/gemeenten/gem_src/Create_j2019_FSS/label;Brondata/CBS/regios/gemeenten/gem_src/Create_j2019_FSS/grid";
+			parameter<String> Generate_PC6 := 'Ready',
+			ExplicitSuppliers = "Brondata/CBS/regios/Postcode_gebieden/Make_Postcode6_punten_FSS/Geometry;Brondata/CBS/regios/Postcode_gebieden/Make_Postcode6_punten_FSS/label;Brondata/CBS/regios/Postcode_gebieden/Make_Postcode6_punten_FSS/amsterdam_rel;Brondata/CBS/regios/Postcode_gebieden/Make_Postcode6_punten_FSS/baarn_rel";
+			parameter<String> Generate_BegrenzingBebouwdGebied := 'Ready',
+			ExplicitSuppliers = "Brondata/CBS/begrenzing_bebouwd_gebied/Create_BBG_2003_FSS/geometry";
+		}
+		container OSM
+		{
+			parameter<String> Generate_OSM_NL := 'Ready',
+			ExplicitSuppliers = "/Brondata/OSM/Wegen_Creator/geometry;/Brondata/OSM/Wegen_Creator/fclass";
+			parameter<String> Generate_OSM_Car := 'Ready',
+			ExplicitSuppliers = "/Brondata/OSM/NetworkPreperation/Car/Make_all/line;/Brondata/OSM/NetworkPreperation/Car/Make_all/wegtype;/Brondata/OSM/NetworkPreperation/Car/Make_all/wegtype_label";
+			parameter<String> Generate_OSM_Bike := 'Ready',
+			ExplicitSuppliers = "/Brondata/OSM/NetworkPreperation/Bike/Make_all/line;/Brondata/OSM/NetworkPreperation/Bike/Make_all/wegtype;/Brondata/OSM/NetworkPreperation/Bike/Make_all/wegtype_label";
+			parameter<String> Generate_OSM_Pedestrian := 'Ready',
+			ExplicitSuppliers = "/Brondata/OSM/NetworkPreperation/Pedestrian/Make_all/line;/Brondata/OSM/NetworkPreperation/Pedestrian/Make_all/wegtype;/Brondata/OSM/NetworkPreperation/Pedestrian/Make_all/wegtype_label";
+		}
+		container LISA
+		{
+			parameter<String> Generate_LISA := 'Ready',
+			ExplicitSuppliers = "/Brondata/LISA/MakeLISA2018_FSS/geometry;/Brondata/LISA/MakeLISA2018_FSS/banen;/Brondata/LISA/MakeLISA2018_FSS/naam";
+		}
+	}
+	
+	container Parameters : using = "eenheden" 
+	{
+		parameter<int32>  VBO_opp_truncation              := 1000i;
+		parameter<int32>  VBO_opp_truncation_defaultvalue := 100i;
+		parameter<string>   LISA_jaar                    := '2018';                    //LISA file date
+		parameter<string>   OSM_file_date                := '20211221';                //OpenStreetMap file date #'20200117' 20211004
+		parameter<string>   Orgset                       := 'Buurt_y2020_centroiden';  //Welke origin punten worden gebruikt? Opties: 'PC4' 'PC6' 'Buurt_y2020' 'Buurt_y2017_centroiden' 'Buurt_y2020_centroiden'
+		parameter<string>   Destset                      := 'Ziekenhuizen_y2020';         //Welke destination punten worden gebruikt? Opties: 'LISA' 'Huisartsenposten' 'Huisartsenposten_geclusterd', 'Ziekenhuizen_y2020', 'Ziekenhuizen_y2020_sub' 'Supermarkten_yokt2018' 'Winkelsdagelijks_yokt2018'
+		parameter<bool>     Dests_geclusterd             := true;                        // destinations clusteren? aan te raden bij bijv LISA.
+		
+		parameter<string>   items_of_interest            := 'nr_ziekenhuizen';         //Welk attribuut van de destset ben je in geinteresseerd? Opties: 'nr_huisartsenposten' 'nr_ziekenhuizen' 'nr_banen' 'nr_inwoners' 'nr_supermarkten' 'nr_winkelsdagelijks'
+
+		parameter<min_f>    MaxPrivateTransportDuration       := 120[min_f];                //Maximale reistijd met lopen/fiets/auto //120
+		
+		container Advanced
+		{
+			unit<uint32> org_domain_list : nrofrows = 17 // Hier worden de paden voor elke org set opgegeven. En wanneer er nieuwe bij komen dat hier ook toegevoegd worden.
+			{
+				unit<uint32> Elements  := Range(uint32, 0, nrAttr*#.)
+				{
+					attribute<String> Text:
+					// Label, Path
+					[
+					'Buurt_y2020'                         ,'SourceData/RegioIndelingen/Buurten/y2020',
+					'Wijk_y2020'                          ,'SourceData/RegioIndelingen/Wijken/y2020',
+					
+					'Buurt_y2017_centroiden'              ,'SourceData/RegioIndelingen/Buurten/y2017_centroiden',
+					'Buurt_y2017_centroiden_corop'        ,'SourceData/RegioIndelingen/Buurten/y2017_centroiden/Per_Corop/@REGIO@/sub',
+					'Buurt_y2017_centroiden_provincies'   ,'SourceData/RegioIndelingen/Buurten/y2017_centroiden/Per_Prov/@REGIO@/sub',
+					
+					'Buurt_y2020_centroiden'              ,'SourceData/RegioIndelingen/Buurten/y2020_centroiden',
+					'Buurt_y2020_centroiden_sub'          ,'SourceData/RegioIndelingen/Buurten/y2020_centroiden/sub',
+					'Buurt_y2020_centroiden_corop'        ,'SourceData/RegioIndelingen/Buurten/y2020_centroiden/Per_Corop/@REGIO@/sub',
+					'Buurt_y2020_centroiden_provincies'   ,'SourceData/RegioIndelingen/Buurten/y2020_centroiden/Per_Prov/@REGIO@/sub',
+					
+					'PC4'                                 ,'SourceData/RegioIndelingen/PC4_punten',
+					'PC4_sub'                             ,'SourceData/RegioIndelingen/PC4_punten/sub',
+					'PC4_tile_corop'                      ,'SourceData/RegioIndelingen/PC4_punten/Per_Corop/@REGIO@/sub',
+					'PC4_tile_provincies'                 ,'SourceData/RegioIndelingen/PC4_punten/Per_Prov/@REGIO@/sub',
+					
+					'PC6'                                 ,'SourceData/RegioIndelingen/PC6_punten',
+					'PC6_sub'                             ,'SourceData/RegioIndelingen/PC6_punten/sub',
+					'PC6_tile_corop'                      ,'SourceData/RegioIndelingen/PC6_punten/Per_Corop/@REGIO@/sub',
+					'PC6_tile_provincies'                 ,'SourceData/RegioIndelingen/PC6_punten/Per_Prov/@REGIO@/sub'
+					]; 
+				}
+				
+				attribute<uint32>        id              := id(.);
+				attribute<string>        label          := Elements/Text[value(UInt32(ID(.))* nrAttr + 0, Elements)];
+				attribute<string>        path           := Elements/Text[value(UInt32(ID(.))* nrAttr + 1, Elements)], DialogType = "LabelText";
+				
+				parameter<uint32> nrAttr := 2;
+			}
+			
+			unit<uint32> dest_domain_list : nrofrows = 1 // Hier worden de paden voor elke dest set opgegeven. En wanneer er nieuwe bij komen dat hier ook toegevoegd worden.
+			{ 
+				unit<uint32> Elements  := Range(uint32, 0, nrAttr*#.)
+				{
+					attribute<String> Text:
+					// Label, Path
+					[
+					'LISA'                            ,'SourceData/LISA/ReadFSS/y@LISAJAAR@/PerYear/HeeftBanen'
+					]; 
+				}
+				
+				attribute<uint32>        id              := id(.);
+				attribute<string>        label          := Elements/Text[value(UInt32(ID(.))* nrAttr + 0, Elements)];
+				attribute<string>        path           := replace(Elements/Text[value(UInt32(ID(.))* nrAttr + 1, Elements)], '@LISAJAAR@', LISA_jaar), DialogType = "LabelText";
+				
+				parameter<uint32> nrAttr := 2;
+			}
+			
+		
+			parameter<bool>     OSM_NL_prov             := TRUE;                        //OSM data NL in provincies opgesplitst?
+			parameter<string>   Dest_location_scale     := '500m';                      //Het schaalniveau om destination op te clusteren. Opties: '100m', '500m', '1000m', '5000m', '10000m', '50000m'
+			parameter<string>   fileNamePrefix          :=  '%LocalDataDir%/NetworkModel/Output/';  //Locatie waar output files moeten worden opgeslagen.
+			
+			parameter<km_hr>    CarDefaultSpeed         := 50[km_hr];
+			parameter<km_hr>    CarDefaultSpeed_low     := 30[km_hr];
+			parameter<km_hr>    Ferry_Speed             := 10[km_hr];
+			
+			parameter<string>   DestSet_string          := Dests_geclusterd 
+																	? lowercase(Destset) + '_' + lowercase(Dest_location_scale)
+																	: lowercase(Destset);
+			parameter<string>   Orgset_str              := lowercase(Orgset);    //'PC6_domain_corop'; //'PC6full' 'PC6sub' 'PC4full' 'PC4sub' PC6sub_MRA PC6sub_Pijp Point100m LocatiesMachiel Buurtsub_MRA  //org punten selectie
+			unit<uint32>        Regio                   := /Brondata/CBS/regios/Nederland/src; // Als je getiled wilt rekenen, zorgt dit dat je verwijst naar die tiling, of naar heel NL in één keer.
+			
+			container OSM_impl
+			{
+				unit<uint32> InEenBestand : nrofrows = 4
+				{
+					unit<uint32> Elements  := Range(uint32, 0, nrAttr*#.)
+					{
+						attribute<String> Text:
+						// Regio             , OrgSet , OrgPath, Land, Type, 
+						[
+						'Netherlands'             ,'NL', 'OD',
+
+						'Belgium'                 ,'BE', 'OD',
+
+						'Niedersachsen'           ,'DE', 'OD',
+						'Nordrhein-Westfalen'     ,'DE', 'OD'
+						]; 
+					}
+					
+					attribute<string>        label          := Elements/Text[value(UInt32(ID(.))* nrAttr + 0, Elements)], DialogType = "LabelText";
+					attribute<string>        name           := replace(label, '-', '_');
+					attribute<string>        Country        := Elements/Text[value(UInt32(ID(.))* nrAttr + 1, Elements)];
+					attribute<string>        Type_src       := Elements/Text[value(UInt32(ID(.))* nrAttr + 2, Elements)];
+					
+					parameter<uint32> nrAttr := 3;
+				}
+				unit<uint32> InProvincies : nrofrows = 17
+				{
+					unit<uint32> Elements  := Range(uint32, 0, nrAttr*#.)
+					{
+						attribute<String> Text:
+						// Regio             , OrgSet , OrgPath, Land, Type, 
+						[
+						'Drenthe'                 ,'NL', 'OD',
+						'Flevoland'               ,'NL', 'OD',
+						'Friesland'               ,'NL', 'OD',
+						'Gelderland'              ,'NL', 'OD',
+						'Groningen'               ,'NL', 'OD',
+						'Limburg'                 ,'NL', 'OD',
+						'Noord-Brabant'           ,'NL', 'OD',
+						'Noord-Holland'           ,'NL', 'OD',
+						'Overijssel'              ,'NL', 'OD',
+						'Utrecht'                 ,'NL', 'OD',
+						'Zeeland'                 ,'NL', 'OD',
+						'Zuid-Holland'            ,'NL', 'OD',
+
+						'Belgium'                 ,'BE', 'OD',
+
+						'Niedersachsen'           ,'DE', 'OD',
+						'Duesseldorf-regbez'       ,'DE', 'OD',
+						'Koeln-regbez'             ,'DE', 'OD',
+						'Muenster-regbez'          ,'DE', 'OD'
+						]; 
+					}
+					
+					attribute<string>        label          := Elements/Text[value(UInt32(ID(.))* nrAttr + 0, Elements)], DialogType = "LabelText";
+					attribute<string>        name           := replace(label, '-', '_');
+					attribute<string>        Country        := Elements/Text[value(UInt32(ID(.))* nrAttr + 1, Elements)];
+					attribute<string>        Type_src       := Elements/Text[value(UInt32(ID(.))* nrAttr + 2, Elements)];
+					
+					parameter<uint32> nrAttr := 3;
+				}
+			}
+			
+			unit<uint32> OSM_Regios := =OSM_NL_prov ? 'OSM_impl/InProvincies' : 'OSM_impl/InEenBestand'
+			{
+				attribute<string>        label          := =OSM_NL_prov ? 'OSM_impl/InProvincies/label' : 'OSM_impl/InEenBestand/label';
+				attribute<string>        name           := =OSM_NL_prov ? 'OSM_impl/InProvincies/name' : 'OSM_impl/InEenBestand/name';
+				attribute<string>        Country        := =OSM_NL_prov ? 'OSM_impl/InProvincies/Country' : 'OSM_impl/InEenBestand/Country';
+				attribute<string>        Type_src       := =OSM_NL_prov ? 'OSM_impl/InProvincies/Type_src' : 'OSM_impl/InEenBestand/Type_src';
+				
+				attribute<AnalyseRegios> AnalyseRegios_rel := rlookup(country, AnalyseRegios/short);
+				
+				attribute<bool>          IsOD_Regio      := Type_src == 'OD';
+				
+				
+				unit<uint32> OD_regios := subset(IsOD_Regio)
+				{
+					attribute<string> name  := ../name[nr_OrgEntity];
+					attribute<string> label := ../label[nr_OrgEntity];
+				}
+				
+				unit<uint32> Countries : nrofrows = 3
+				{
+					attribute<string> name : ['Germany', 'Netherlands', 'Belgium'];
+				}
+				
+				unit<uint32> Germany := subset(country == 'DE')
+				{
+					attribute<string> name  := ../name[nr_OrgEntity];
+					attribute<string> label := ../label[nr_OrgEntity];
+				}
+				unit<uint32> Netherlands := subset(country == 'NL')
+				{
+					attribute<string> name  := ../name[nr_OrgEntity];
+					attribute<string> label := ../label[nr_OrgEntity];
+				}
+				unit<uint32> Belgium := subset(country == 'BE')
+				{
+					attribute<string> name  := ../name[nr_OrgEntity];
+					attribute<string> label := ../label[nr_OrgEntity];
+				}
+				
+			}
+			
+			
+			unit<uint32> AnalyseRegios : nrofrows = 1 // Hier worden de paden voor elke org set opgegeven. En wanneer er nieuwe bij komen dat hier ook toegevoegd worden.
+			{
+				unit<uint32> Elements  := Range(uint32, 0, nrAttr*#.)
+				{
+					attribute<String> Text:
+					// Regio             , OrgSet , OrgPath, Land, Type, 
+					[
+					'Netherlands'             , 'PC4' , '/SourceData/RegioIndelingen/Dutch_PC4_areas'      ,'NL'
+					]; 
+				}
+
+				attribute<string>        name          := Elements/Text[value(UInt32(ID(.))* nrAttr + 0, Elements)], DialogType = "LabelText";
+				attribute<string>        OrgSet        := Elements/Text[value(UInt32(ID(.))* nrAttr + 1, Elements)];
+				attribute<string>        OrgSet_path   := Elements/Text[value(UInt32(ID(.))* nrAttr + 2, Elements)];
+				attribute<string>        short         := Elements/Text[value(UInt32(ID(.))* nrAttr + 3, Elements)];
+				
+				parameter<uint32> nrAttr := 4;
+			}
+		}
+	}
+	
+	#include <eenheden.dms>
+	#include <typeringen.dms>
+	
+	container geometries: isHidden = "True", DialogType = "ishidden"
+	{
+		unit<fpoint> rdc_base
+		:	Format     = "EPSG:28992"
+		, 	DialogData = "ngr_layer"; // wms achtergrondlaag voor kaarten met rd coordinaten
+		unit<fpoint> rdc     := range(rdc_base, point(0f,300000f), point(280000f,625000f));
+		unit<ipoint> rdc_mm := gridset(rdc, point(0.001,0.001), point(0.0, 0.0), ipoint);
+		
+		unit<dpoint> wgs84_base : format = "EPSG:4326";
+		unit<fpoint> LambertEA_base : format = "EPSG:3035", DialogData = "ngr_layer_lea";
+		unit<fpoint> LambertEA      := range(LambertEA_base, point(2500000f, 1300000f), point(4900000f, 4300000f));
+
+		
+		#include <ngr_layer.dms>
+		#include <ngr_layer_lea.dms>
+		
+		unit<uint32> selectie_polygoon : nrofrows = 1
+
+		{
+			// parameter<geometries/rdc> top_left     := point(115000f, 490000f, geometries/rdc);
+			// parameter<geometries/rdc> top_right    := point(125000f, 490000f, geometries/rdc);
+			// parameter<geometries/rdc> bottom_left  := point(115000f, 480000f, geometries/rdc);
+			// parameter<geometries/rdc> bottom_right := point(125000f, 480000f, geometries/rdc);
+			
+			parameter<geometries/rdc> top_left     := point(70000f, 490000f, geometries/rdc);
+			parameter<geometries/rdc> top_right    := point(150000f, 490000f, geometries/rdc);
+			parameter<geometries/rdc> bottom_left  := point(70000f, 430000f, geometries/rdc);
+			parameter<geometries/rdc> bottom_right := point(150000f, 430000f, geometries/rdc);
+			
+			unit<uint32>              point_set    : nrofrows = 5
+			{
+				attribute<geometries/rdc>      point        := union_data(., top_left, top_right, bottom_right, bottom_left, top_left);
+				attribute<selectie_polygoon>   sequence_rel := const(0, .);
+				attribute<.>                   ordinal      := id(.);
+			}
+			
+			attribute<geometries/rdc> polygon (polygon)      := points2sequence(point_set/point, point_set/sequence_rel, point_set/ordinal);
+			attribute<geometries/rdc_mm> polygon_mm (polygon)      := polygon[geometries/rdc_mm];
+			attribute<eenheden/m2>             area                   := area(polygon, eenheden/m2);
+			
+		}
+		
+		container potentialen: using = "eenheden"
+		{
+			unit<uint32> Dist2Range;
+			
+			container pot4m   := potrange(4[m], 4[m]);
+			container pot40m   := potrange(10[m], 40[m]);
+			container pot100m   := potrange(10[m], 100[m]);
+
+			Template potrange
+			{
+				parameter<m>       gridgrootte;
+				parameter<m>       afkapstraal;
+				parameter<float32> straal                 := afkapstraal / gridgrootte;
+				unit<spoint>       potRange               := range(spoint, point(-straal[int16], -straal[int16]), point(straal[int16] + 1s, straal[int16] + 1s))
+				{
+					attribute<Dist2Range> distMatr        := dist2(point(0s, 0s, potRange), Dist2Range);
+					attribute<float32> distMatr_f         := distMatr[float32];
+					attribute<float32> AbsWeight          := distMatr[float32] <= (straal * straal) ? 1f / (distMatr[float32] + 0.08f) : 0f;
+					attribute<float32> RelWeightSqrt      := AbsWeight / Sum(AbsWeight);
+				}
+			}
+		}
+	}
+	
+	container NL_grid: isHidden = "True", Using = "Eenheden;geometries"
+	{
+		parameter<m> gridsize := 100[m];
+		parameter<m> gridsize_3m := 3[m];
+		parameter<m> gridsize_4m := 4[m];
+		parameter<m> gridsize_5m := 5[m];
+		parameter<m> gridsize_10m := 10[m];
+		parameter<m> gridsize_25m := 25[m];
+		parameter<m> gridsize_500m := 500[m];
+		
+		parameter<m> x_min := 0[m];
+		parameter<m> x_max := 280000[m];
+		parameter<m> y_min := 300000[m];
+		parameter<m> y_max := 625000[m];
+
+		parameter<int16> nr_cols := int16((x_max - x_min) / gridsize);
+		parameter<int16> nr_rows := int16((y_max - y_min) / gridsize);
+
+		unit<spoint> domain :=
+			range(
+				 gridset(
+					 rdc
+					,point(gridsize, -gridsize, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,spoint
+				)
+				,point(0s, 0s)
+				,point(nr_cols, nr_rows)
+			)
+		,	DialogData = "geometries/rdc"
+		{
+			attribute<geometries/rdc>  point_rd      := id(.)[geometries/rdc] + point(0.5f * gridsize, -0.5f * gridsize, geometries/rdc);
+			parameter<uint32>          max_col_value := max(pointcol(id(.)))[uint32] + 1;
+			attribute<uint32>          identificatie := (pointcol(id(.))[uint32] + 1) + ((pointrow(id(.))[uint32]) * max_col_value);
+			
+			attribute<float32>         conditie      := const(0f,.);
+			
+			attribute<Brondata/CBS/regios/gemeenten/gem_src/j2019> NL_rel := point_in_polygon(point_rd, Brondata/CBS/regios/gemeenten/gem_src/j2019/Geometry);
+			attribute<bool>           IsNederland   := IsDefined(/Brondata/CBS/regios/Provincies/src_2019/grid);
+			attribute<int32>          inwoner2000   := rjoin(id(.), invert(BronData/CBS/CBS_vierkanten/V2014/Vierkant_rel), BronData/CBS/CBS_vierkanten/V2014/inwoner2000_edit);
+			attribute<int32>          inwoner2017   := rjoin(id(.), invert(BronData/CBS/CBS_vierkanten/V2017/Vierkant_rel), BronData/CBS/CBS_vierkanten/V2017/inwoner2017_edit);
+			attribute<int32>          inwoner2020   := rjoin(id(.), invert(BronData/CBS/CBS_vierkanten/V2020/Vierkant_rel), BronData/CBS/CBS_vierkanten/V2020/inwoner_edit);
+			attribute<int32>          beroepsbevolking2017   := rjoin(id(.), invert(BronData/CBS/CBS_vierkanten/V2017/Vierkant_rel), BronData/CBS/CBS_vierkanten/V2017/beroepsbevolking);
+			
+			attribute<domain_500m>    domain_500m_rel := id(.)[domain_500m];
+		}
+		
+		unit<uint32> domain_poly := Subset(domain/conditie == 0f && domain/IsNederland)
+		,	DialogType = "Map"
+		,	DialogData = "poly"
+		,	FreeData   = "False"
+		{
+			attribute<domain>         Nr_OrgEntity;
+			attribute<geometries/rdc> point_LT       := Nr_OrgEntity[geometries/rdc];
+			attribute<geometries/rdc> poly (poly)    := points2sequence(pointset/point, pointset/sequence, pointset/ordinal);
+			
+			unit<uint32> pointset:= union_unit(.,.,.,.,.)
+			{
+				attribute<geometries/rdc>    point    :=  
+					union_data(
+						.
+						, ../point_LT
+						, ../point_LT + point(gridsize,      0[m], geometries/rdc)
+						, ../point_LT + point(gridsize, -gridsize, geometries/rdc)
+						, ../point_LT + point(    0[m], -gridsize, geometries/rdc)
+						, ../point_LT 
+					);
+				attribute<..>                sequence :=  union_data(., id(..), id(..), id(..), id(..), id(..));
+				attribute<uint32>            ordinal  :=  union_data(., const(0,..), const(1,..), const(2,..), const(3,..), const(4,..));
+			}
+		}
+		
+		/////
+		parameter<int32> nr_cols_3m := int32((x_max - x_min) / gridsize_3m);
+		parameter<int32> nr_rows_3m := int32((y_max - y_min) / gridsize_3m);
+		
+		unit<ipoint> domain_3m_untiled :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(gridsize_3m, -gridsize_3m, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,ipoint
+				)
+				,point(0i, 0i)
+				,point(nr_cols_3m, nr_rows_3m)
+			)
+		,	DialogData = "geometries/rdc"
+		, 	FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+
+		unit<ipoint> domain_3m := TiledUnit(Point(1000i, 1200i, domain_3m_untiled))
+		, FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+		/////
+		parameter<int32> nr_cols_4m := int32((x_max - x_min) / gridsize_4m);
+		parameter<int32> nr_rows_4m := int32((y_max - y_min) / gridsize_4m);
+		
+		unit<ipoint> domain_4m_untiled :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(gridsize_4m, -gridsize_4m, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,ipoint
+				)
+				,point(0i, 0i)
+				,point(nr_cols_4m, nr_rows_4m)
+			)
+		,	DialogData = "geometries/rdc"
+		, 	FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+
+		unit<ipoint> domain_4m := TiledUnit(Point(1000i, 1200i, domain_4m_untiled))
+		, FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+		/////
+		parameter<int32> nr_cols_5m := int32((x_max - x_min) / gridsize_5m);
+		parameter<int32> nr_rows_5m := int32((y_max - y_min) / gridsize_5m);
+		
+		unit<ipoint> domain_5m_untiled :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(gridsize_5m, -gridsize_5m, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,ipoint
+				)
+				,point(0i, 0i)
+				,point(nr_cols_5m, nr_rows_5m)
+			)
+		,	DialogData = "geometries/rdc"
+		, 	FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+
+		unit<ipoint> domain_5m := TiledUnit(Point(1000i, 1200i, domain_5m_untiled))
+		, FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+		/////
+		parameter<int16> nr_cols_10m := int16((x_max - x_min) / gridsize_10m);
+		parameter<int16> nr_rows_10m := int16((y_max - y_min) / gridsize_10m);
+		
+		unit<spoint> domain_10m_untiled :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(gridsize_10m, -gridsize_10m, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,spoint
+				)
+				,point(0s, 0s)
+				,point(nr_cols_10m, nr_rows_10m)
+			)
+		,	DialogData = "geometries/rdc"
+		, FreeData = "false"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+
+		unit<spoint> domain_10m := TiledUnit(Point(1000s, 1200s, domain_10m_untiled))
+		, FreeData = "false"
+		{
+			attribute<domain_500m>     grid_500m_rel    := id(.)[domain_500m];
+			attribute<domain>          grid_100m_rel    := id(.)[domain];
+			attribute<domain_25m>      grid_25m_rel     := id(.)[domain_25m];
+			parameter<ha> NrHaPerCell: [0.01];
+		}
+		/////
+		parameter<int16> nr_cols_25m := int16((x_max - x_min) / gridsize_25m);
+		parameter<int16> nr_rows_25m := int16((y_max - y_min) / gridsize_25m);
+		
+		unit<spoint> domain_25m_untiled :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(gridsize_25m, -gridsize_25m, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,spoint
+				)
+				,point(0s, 0s)
+				,point(nr_cols_25m, nr_rows_25m)
+			)
+		,	DialogData = "geometries/rdc"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+
+		unit<spoint> domain_25m := TiledUnit(Point(1000s, 1200s, domain_25m_untiled))
+		{
+			attribute<domain>          grid_100m_rel    := id(.)[domain];
+			attribute<geometries/rdc>  point_rd         := id(.)[geometries/rdc] + point(0.5f * gridsize, -0.5f * gridsize, geometries/rdc);
+			parameter<uint32>          max_col_value    := max(pointcol(id(.)))[uint32] + 1;
+			attribute<uint32>          identificatie    := (pointcol(id(.))[uint32] + 1) + ((pointrow(id(.))[uint32]) * max_col_value);
+		}
+		/////
+		parameter<int16> nr_cols_500m := int16((x_max - x_min) / gridsize_500m);
+		parameter<int16> nr_rows_500m := int16((y_max - y_min) / gridsize_500m);
+		
+		unit<spoint> domain_500m_untiled :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(gridsize_500m, -gridsize_500m, geometries/rdc)
+					,point(x_min, y_max, geometries/rdc)
+					,spoint
+				)
+				,point(0s, 0s)
+				,point(nr_cols_500m, nr_rows_500m)
+			)
+		,	DialogData = "geometries/rdc"
+		{
+			attribute<domain>      grid_100m_rel    := id(.)[domain];
+		}
+
+		unit<spoint> domain_500m := TiledUnit(Point(1000s, 1200s, domain_500m_untiled))
+		{
+			attribute<domain>          grid_100m_rel    := id(.)[domain];
+			attribute<geometries/rdc>  point_rd         := id(.)[geometries/rdc] + point(0.5f * gridsize_500m, -0.5f * gridsize_500m, geometries/rdc);
+			parameter<uint32>          max_col_value    := max(pointcol(id(.)))[uint32] + 1;
+			attribute<uint32>          identificatie    := (pointcol(id(.))[uint32] + 1) + ((pointrow(id(.))[uint32]) * max_col_value);
+			attribute<Brondata/CBS/regios/gemeenten/gem_src/j2019> NL_rel := point_in_polygon(point_rd, Brondata/CBS/regios/gemeenten/gem_src/j2019/Geometry);
+			parameter<ha> NrHaPerCell: [25];
+		}
+		/////////
+		unit<uint32> points := Subset(isDefined(domain/NL_rel))
+		,	DialogData = "geometry"
+		,	DialogType = "map"
+		{
+			attribute<geometries/rdc> 	geometry  := domain/point_rd[nr_OrgEntity];	
+			attribute<uint32>           id        := domain/identificatie[nr_OrgEntity];
+			
+			attribute<float32>          x         := PointCol(geometry);
+			attribute<float32>          y         := PointRow(geometry);
+			
+			attribute<NL_grid/domain>   NL_grid_domain_rel  := geometry[NL_grid/domain];
+			attribute<spoint>           Org_Grid_rel        := geometry[Analyse/NetwerkDist/MaakNetwerkDist_Banen/org_grid];
+			
+			attribute<int32>           Inwoners_2019       := /Brondata/CBS/CBS_vierkanten/V2019/inwoner_grid[NL_grid_domain_rel];
+			attribute<int32>           Inwoners_2020       := /Brondata/CBS/CBS_vierkanten/V2020/inwoner_grid[NL_grid_domain_rel];
+			
+			unit<uint32> HeeftInwoners := subset(Inwoners_2020 > 0i)
+			{
+				attribute<geometries/rdc>  geometry      := ../geometry[nr_OrgEntity];
+				attribute<uint32>          id            := ../id[nr_OrgEntity];
+				attribute<int32>           Inwoners_2020 := ../Inwoners_2020[nr_OrgEntity];
+			}
+		}
+		unit<uint32> points_500m := Subset(isDefined(domain_500m/NL_rel))
+		,	DialogData = "geometry"
+		,	DialogType = "map"
+		{
+			attribute<geometries/rdc> 	geometry  := domain_500m/point_rd[nr_OrgEntity];	
+			attribute<uint32>           id        := domain_500m/identificatie[nr_OrgEntity];
+			
+			attribute<float32>          x         := PointCol(geometry);
+			attribute<float32>          y         := PointRow(geometry);
+			
+			attribute<NL_grid/domain_500m>   NL_grid_domain_500m_rel  := geometry[NL_grid/domain_500m];
+			attribute<spoint>           Org_Grid_rel        := geometry[Analyse/NetwerkDist/MaakNetwerkDist_Banen/org_grid];
+			
+			attribute<int32>           Inwoners_2019       := sum(Brondata/CBS/CBS_vierkanten/V2019/inwoner_grid, domain/domain_500m_rel)[NL_grid_domain_rel];
+			
+			unit<uint32> HeeftInwoners := subset(Inwoners_2019 > 0i)
+			{
+				attribute<geometries/rdc>  geometry      := ../geometry[nr_OrgEntity];
+				attribute<uint32>          id            := ../id[nr_OrgEntity];
+				attribute<int32>           Inwoners_2019 := ../Inwoners_2019[nr_OrgEntity];
+			}
+		}
+	
+	}
+
+	#include <brondata.dms>
+	#include <analyse.dms>
+	#include <rekenschemas.dms>
+	
+	container ExportSettings
+	{
+		parameter<geometries/rdc>  CenterOfInterest     := point(122222.13f, 487285.242f, geometries/rdc)
+		{
+			parameter<uint32> SymbolColor : [null], DialogType = "SymbolColor";
+		}
+		
+		parameter<string>         FileNameBase         := 'Export/Map_';   
+		parameter<float64>        width                : [19.14];
+		parameter<float64>        height               : [25.52];
+
+		parameter<DPoint>         PaperSize            := point(width / 100.0 , height / 100.0), url ="about:papersize is <B>defined</B> as height * width";
+
+		parameter<Float64>        ScaleDenom           : [85000];
+		parameter<Float64>        Scale                := 1.0 / ScaleDenom;
+		
+		parameter<float64>        dwsc                 : [null];
+		parameter<DPoint>         DotWorldSize         := Point(dwsc,dwsc);
+
+		parameter<UInt32>         NrSubDotsPerDot      : [2];                                    // alternative spec for nrSubDotsPerDot, default = 2
+
+		parameter<Float64>        dpi                  : [600.0];                                // alternative spec for dotSize in dots per inch (default: 600 pdi)
+		parameter<DPoint>         DotSize              := Point(0.0254/dpi,0.0254/dpi);          // size of dot on paper in m (default 600 dpi)
+		parameter<Float64>        ViewFactor           : [1.0];                                  // paper view distance relative to screen view distance
+
+		parameter<IPoint>         MaxNrSubDotsPerTile  : [(4096, 4096)];
+	}	
+}

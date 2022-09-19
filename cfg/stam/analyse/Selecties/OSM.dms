@@ -1,0 +1,69 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container OSM
+{
+	container weg
+	{
+		unit<uint32> roads_not_unique:=
+			Subset(
+				   PointCol(BronData/OSM/weg/roads/pointset/point) >= X_min
+				&& PointCol(BronData/OSM/weg/roads/pointset/point) <= X_max
+				&& PointRow(BronData/OSM/weg/roads/pointset/point) >= Y_min
+				&& PointRow(BronData/OSM/weg/roads/pointset/point) <= Y_max
+			)
+		,	DialogType  = "Map"
+		,	DialogData  = "line"
+		{
+			attribute<BronData/OSM/weg/roads> sequencenr := BronData/OSM/weg/roads/pointset/SequenceNr[nr_OrgEntity];
+			attribute<Klassificaties/wegtype> wegtype    := BronData/OSM/weg/roads/wegtype[SequenceNr];
+			attribute<Geografie/geometries/rdc>     lijn(arc)  := BronData/OSM/weg/roads/line[SequenceNr];
+
+			attribute<string>                 name       := BronData/OSM/weg/roads/name[SequenceNr];
+			attribute<uint32>                 osm_id     := BronData/OSM/weg/roads/osm_id[SequenceNr];
+
+			unit<uint32> segments:= arc2segm(lijn)
+			{
+				attribute<string> key:= String(PointCol(point)) + '_' + String(PointRow(point)) + '_' + String(PointCol(nextpoint)) + '_' + String(PointRow(nextpoint));
+			}
+			unit<uint32> unique_keys:= unique(roads_not_unique/segments/key)
+			{
+				attribute<roads_not_unique> roads_not_unique_rel:= rjoin(values, roads_not_unique/segments/key, roads_not_unique/segments/SequenceNr);
+			}
+		}
+		unit<uint32> road_unique_with_length_zero: = unique(roads_not_unique/unique_keys/roads_not_unique_rel)
+		,	DialogData      = "lijn"
+		,	DialogType      = "Map"
+		{
+			attribute<roads_not_unique>       roads_not_unique_rel := values;
+			attribute<Klassificaties/wegtype> roadtype             := roads_not_unique/wegtype[roads_not_unique_rel];
+			attribute<string>                 name                 := roads_not_unique/name[roads_not_unique_rel];
+			attribute<uint32>                 osm_id               := roads_not_unique/osm_id[roads_not_unique_rel];
+
+			attribute<geometries/rdc>               lijn(arc)            := roads_not_unique/lijn[roads_not_unique_rel];
+		}
+
+		unit<uint32> road: = Subset(arc_length(road_unique_with_length_zero/lijn,m) > 0[m])
+		,	DialogData  = "lijn"
+		,	DialogType  = "Map"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/OSM/road.fss'"
+
+		{
+			attribute<Klassificaties/wegtype> roadtype  := road_unique_with_length_zero/roadtype[Nr_OrgEntity];
+			attribute<string>                 name      := road_unique_with_length_zero/name[Nr_OrgEntity];
+			attribute<uint32>                 osm_id    := road_unique_with_length_zero/osm_id[Nr_OrgEntity];
+
+			attribute<geometries/rdc>               lijn(arc) := road_unique_with_length_zero/lijn[Nr_OrgEntity];
+
+			attribute<road_unique_with_length_zero> Nr_OrgEntity: DisableStorage = "True";
+
+		}
+	}
+}

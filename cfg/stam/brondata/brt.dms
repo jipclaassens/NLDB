@@ -1,0 +1,158 @@
+container BRT
+{ 
+	unit<uint32> File_dates : nrofrows = 10 
+	{
+		unit<uint32> Elements  := Range(uint32, 0, nrAttr*#.)
+		{
+			attribute<String> Text:
+			// date             , OrgSet , OrgPath, Land, Type, 
+			[
+			'20121101',
+			'20131101',
+			'20141101',
+			'20151101',
+			'20161101',
+			'20171101',
+			'20181101',
+			'20190201',
+			'20210201',
+			'20210601'
+			]; 
+		}
+		attribute<string>        date           := Elements/Text[value(UInt32(ID(.))* nrAttr + 0, Elements)], DialogType = "LabelText";
+		attribute<uint32>        year           := substr(date, 0, 4)[uint32];
+		attribute<string>        name           := 'd'+date;
+		
+		parameter<uint32> nrAttr := 1;
+	}
+
+	
+	container ReadFSS_perYear := 
+		for_each_ne(
+			File_dates/name
+			, 'Read_FSS_T('+quote(File_dates/name)+','+quote(File_dates/date)+')'
+		);
+	
+	Template Read_FSS_T
+	{
+		parameter<string> date_name;
+		parameter<string> date;
+		
+		unit<uint32> ReadFSS 
+		:	StorageName     = "='%SourceDataDir%/BRT/'+date+'/fss/poly.fss'"
+		,	StorageReadOnly = "True"
+		{
+			attribute<geometries/rdc>   geometry_rd (poly);
+			attribute<geometries/rdc>   geometry (poly)     := geometry_rd;
+			attribute<bool>             IsGebouw;
+			attribute<bool>             IsSnelweg;
+			attribute<bool>             IsTerrein;
+			attribute<bool>             IsWater;
+			attribute<bool>             IsWeg;
+			attribute<int32>            TDNCode;
+			attribute<int32>            Visualisat;
+			attribute<string>           label                                             := rjoin(Visualisat, typeringen/brt/visualisatiecodes/code, typeringen/brt/visualisatiecodes/label);
+			attribute<typeringen/brt/visualisatiecodes/label_uq>   label_uq_rel           := rlookup(label, typeringen/brt/visualisatiecodes/label_uq/values);
+			attribute<typeringen/brt/visualisatiecodes>            visualisatiecodes_rel  := rlookup(visualisat, typeringen/brt/visualisatiecodes/code);
+			attribute<int32>                                       Subcode                := rjoin(visualisatiecodes_rel, id(typeringen/brt/visualisatiecodes), typeringen/brt/visualisatiecodes/subcode);
+			attribute<int32>                                       Groepcode              := rjoin(visualisatiecodes_rel, id(typeringen/brt/visualisatiecodes), typeringen/brt/visualisatiecodes/Groepcode);
+			attribute<string>                                      Groep                  := rjoin(visualisatiecodes_rel, id(typeringen/brt/visualisatiecodes), typeringen/brt/visualisatiecodes/groep);
+			attribute<int32>                                       Wegvlak_groep          := rjoin(visualisatiecodes_rel, id(typeringen/brt/visualisatiecodes), typeringen/brt/visualisatiecodes/Wegvlak_groep);
+			attribute<typeringen/BBG>                              bbg_code               := rjoin(visualisatiecodes_rel, id(typeringen/brt/visualisatiecodes), typeringen/brt/visualisatiecodes/bbg_code);
+			attribute<m2>                                          area                   := area(geometry_rd, m2);
+			
+			attribute<uint32>                                      Gebouwen_rel           := invert(Gebouwen/nr_OrgEntity);
+			attribute<uint32>                                      Infrastructuur_rel     := invert(Infrastructuur/nr_OrgEntity);
+			
+			
+			
+			unit<uint32> visuat_uq := unique(Visualisat)
+			{
+				attribute<int32>  values;
+				attribute<string> label   := rjoin(values, ../Visualisat, ../label);
+			}
+			
+			attribute<geometries/rdc>                             centroid              := centroid(geometry_rd);
+			attribute<CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes>   BegBebGeb_rel  := point_in_polygon(centroid, CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes/Geometry);
+			attribute<.>                per_grid_10m (NL_grid/domain_10m) := poly2grid(geometry_rd, NL_grid/domain_10m);
+			
+			unit<uint32> Gebouwen := subset(ReadFSS/Groepcode == 13i)
+			{
+				attribute<geometries/rdc>                             geometry (poly)    := ReadFSS/geometry_rd[nr_OrgEntity];
+				attribute<typeringen/brt/visualisatiecodes>           visualisatiecodes_rel := ReadFSS/visualisatiecodes_rel[nr_OrgEntity];
+				attribute<int32>                                      Wegvlak_groep         := ReadFSS/Wegvlak_groep[nr_OrgEntity];
+				attribute<typeringen/BBG>                             bbg_code              := ReadFSS/BBG_code[nr_OrgEntity];
+				attribute<int32>                                      Groepcode             := ReadFSS/Groepcode[nr_OrgEntity];
+				attribute<m2>                                         area                  := area(geometry_rd, m2);
+				
+				attribute<geometries/rdc>                             centroid              := centroid(geometry_rd);
+				attribute<CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes>   BegBebGeb_rel  := point_in_polygon(centroid, CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes/Geometry);
+				attribute<.>                per_grid_10m (NL_grid/domain_10m) := poly2grid(geometry_rd, NL_grid/domain_10m);
+			}
+			
+			unit<uint32> Infrastructuur := subset(ReadFSS/Groepcode == 10i || ReadFSS/Groepcode == 12i || ReadFSS/bbg_code == 1b)
+			{
+				attribute<geometries/rdc>                             geometry (poly)    := ReadFSS/geometry_rd[nr_OrgEntity];
+				attribute<typeringen/brt/visualisatiecodes>           visualisatiecodes_rel := ReadFSS/visualisatiecodes_rel[nr_OrgEntity];
+				attribute<int32>                                      Wegvlak_groep         := ReadFSS/Wegvlak_groep[nr_OrgEntity];
+				attribute<typeringen/BBG>                             bbg_code              := ReadFSS/BBG_code[nr_OrgEntity];
+				
+				attribute<int32>                                      Groepcode             := ReadFSS/Groepcode[nr_OrgEntity];
+				attribute<m2>                                         area                  := area(geometry_rd, m2);
+				
+				attribute<geometries/rdc>                             centroid              := centroid(geometry_rd);
+				attribute<CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes>   BegBebGeb_rel  := point_in_polygon(centroid, CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes/Geometry);
+				attribute<.>                per_grid_10m (NL_grid/domain_10m) := poly2grid(geometry_rd, NL_grid/domain_10m);
+			}
+			
+			unit<uint32> Terreinen := subset(ReadFSS/Groep != 'REGISTRATIEFGEBIED_VLAK' 
+										&& !IsDefined(ReadFSS/Gebouwen_rel)
+										&& !IsDefined(ReadFSS/Infrastructuur_rel)
+										// && !(ReadFSS/BBG_Code == 8[typeringen/BBG]  && ReadFSS/area > 1000000[m2])    // grote bedrijfsterreinen, bijv Binckhorst
+										// && !(ReadFSS/BBG_Code == 20[typeringen/BBG] && ReadFSS/area > 10000000[m2])  // grote kassengebieden, bijv onder Den Haag
+										// && !(ReadFSS/BBG_Code == 12[typeringen/BBG] && ReadFSS/area > 10000000[m2])  // grote delfstoffen gebieden, bijv haven Rotterdam
+									)
+			{
+				attribute<geometries/rdc>                             geometry (poly)    := ReadFSS/geometry_rd[nr_OrgEntity];
+				attribute<typeringen/brt/visualisatiecodes>           Visualisatiecodes_rel := ReadFSS/Visualisatiecodes_rel[nr_OrgEntity];
+				attribute<int32>                                      Visualisat            := ReadFSS/Visualisat[nr_OrgEntity];
+				attribute<int32>                                      Groepcode             := ReadFSS/Groepcode[nr_OrgEntity];
+				attribute<m2>                                         area                  := area(geometry_rd, m2);
+				
+				attribute<geometries/rdc>                             centroid              := centroid(geometry_rd);
+				attribute<CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes>   BegBebGeb_rel  := point_in_polygon(centroid, CBS/begrenzing_bebouwd_gebied/Bevolkingskern_2011/shapes/Geometry);
+				attribute<.>                per_grid_10m (NL_grid/domain_10m) := poly2grid(geometry_rd, NL_grid/domain_10m);
+			}
+			
+			unit<uint32> LU_ordered := union_unit(terreinen, infrastructuur, gebouwen)
+			{
+				attribute<geometries/rdc>                             geometry (poly)       := union_data(., terreinen/geometry , infrastructuur/geometry, gebouwen/geometry);
+				attribute<typeringen/BBG>                             bbg_code              := union_data(., terreinen/bbg_code , infrastructuur/bbg_code, gebouwen/bbg_code);
+				attribute<typeringen/brt/visualisatiecodes>           visualisatiecodes_rel := union_data(., terreinen/visualisatiecodes_rel , infrastructuur/visualisatiecodes_rel, gebouwen/visualisatiecodes_rel);
+			}
+			unit<uint32> LU_ordered_zGebouwen := union_unit(terreinen, infrastructuur)
+			{
+				attribute<geometries/rdc>                             geometry (poly)       := union_data(., terreinen/geometry , infrastructuur/geometry);
+				attribute<typeringen/BBG>                             bbg_code              := union_data(., terreinen/bbg_code , infrastructuur/bbg_code);
+				attribute<typeringen/brt/visualisatiecodes>           visualisatiecodes_rel := union_data(., terreinen/visualisatiecodes_rel , infrastructuur/visualisatiecodes_rel);
+			}
+			
+			container MaakLosseCat :=
+				for_each_ne(
+					typeringen/BRT/visualisatiecodes/label_uq/name
+					, 'BRT_groepen(' +string(id(typeringen/BRT/visualisatiecodes/label_uq))+ ')'
+				);
+				
+			container DistanceTo
+			{
+				unit<uint32>      segments                := arc2segm(../geometry_rd);
+				unit<uint32>      pointset                := dyna_point(segments/point, segments/nextpoint, value(100, m)), DialogType = "Map", DialogData = "point"
+				{
+					attribute<NL_grid/domain> grid_rel  := point[NL_grid/domain];
+				}
+				attribute<m>      DistTo (NL_grid/domain) := GridDist(resistance, pointset/grid_rel, const(0, pointset, m));
+				attribute<m>      resistance (NL_grid/domain)	:= const(100,NL_grid/domain,m);
+			}
+		}
+	}
+}

@@ -1,0 +1,250 @@
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                                                                                    //
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//       Configuratiebestand voor opbouw Netwerk, waarin de herkomst en               //
+//       bestemmings locaties gekoppeld worden aan een gesloten netwerk               //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container OrgToDest: FreeData = "false"
+{ 
+	unit<uint32> Locations := union_unit(orgDomain, destDomain)
+	,	DialogData  = "Values"
+	,	DialogType  = "Map"
+	,	FreeData = "False"
+	{
+		attribute<geometries/rdc> Values := union_data(.,orgLocations, destLocations),Label = "Unieke Locations origins en destinations";
+		
+	}
+	unit<uint32> UniqueLocation := unique(Locations/values);
+
+	unit<uint32> RoadsWithLocations := ='connect(MakeConnectedRoads/result_'+network_type+'Network/line, OrgToDest/UniqueLocation/values)'
+	,	DialogData = "UnionData"
+	,	DialogType = "Map"
+	,	FreeData = "False"
+	{
+		attribute<geometries/rdc>                      UnionData(arc);
+		attribute<typeringen/OSM/wegtype>              wegtype         := ='MakeDefined(MakeConnectedRoads/result_'+network_type+'Network/wegtype[nr_OrgEntity], value(69,typeringen/OSM/wegtype))';
+	}
+
+/*
+	container DoubleConnect // Voor het werken met bv PC6 data, waarin je lokaties zowel aan de Car Network wegen wil koppelen als aan paden indien die dichterbij liggen.
+	{
+		unit<uint32> CarNetworkWithLocations := connect(MakeConnectedRoads/result_CarNetwork/line, OrgToDest/UniqueLocation/values)
+			,	DialogData = "UnionData"
+			,	DialogType = "Map"
+			,	FreeData = "False"
+		{
+			attribute<geometries/rdc>         UnionData(arc);
+			attribute<typeringen/OSM/wegtype> wegtype := MakeDefined(MakeConnectedRoads/result_CarNetwork/wegtype[nr_OrgEntity], value(69,typeringen/OSM/wegtype));
+		}
+
+		unit<uint32> CarNetworkWithLocationsAndRoadsWithLocations := union_unit(CarNetworkWithLocations, RoadsWithLocations)
+		,	DialogData = "UnionData"
+		,	DialogType = "Map"
+		,	FreeData = "False"
+		{
+			attribute<geometries/rdc>         UnionData(arc) := union_data(.,CarNetworkWithLocations/UnionData, RoadsWithLocations/UnionData);
+			attribute<typeringen/OSM/wegtype> wegtype        := union_data(.,CarNetworkWithLocations/wegtype, RoadsWithLocations/wegtype);
+		}
+
+		unit <uint32> LinkSet := arc2segm(CarNetworkWithLocationsAndRoadsWithLocations/UnionData)
+		,	DialogData = "segments"
+		,	DialogType = "Map"
+		,	FreeData = "False"
+		{
+			attribute<geometries/rdc>          point;
+			attribute<geometries/rdc>          nextpoint;
+			attribute<RoadsWithLocations>      SequenceNr;
+			attribute<typeringen/OSM/wegtype>  wegtype := CarNetworkWithLocationsAndRoadsWithLocations/wegtype[SequenceNr];
+			attribute<string>                  key     := string(pointCol(point)) + '_' + string(pointRow(point))+ '_' + string(pointCol(nextpoint))+ '_' + string(pointRow(nextpoint));
+			
+			attribute<geometries/rdc>          segments(arc) := points2sequence(pointset/point, pointset/ArcID, pointset/VolgNr);
+			attribute<m>                       lengte        := arc_length(segments, m);
+
+			unit<uint32> pointset := Union_Unit(LinkSet, LinkSet)
+			{
+				attribute<geometries/rdc>   point   := Union_Data(pointset, LinkSet/point, LinkSet/nextpoint);
+				attribute<LinkSet>          ArcID   := value(ID(pointset) % nrofrows(LinkSet), LinkSet);
+				attribute<uint32>           VolgNr  := ID(pointset) / nrofrows(LinkSet);
+			}
+		}
+
+		// unit <uint32> LinkSet := unique(LinkSet_not_unique/key)
+		// {
+			// attribute<geometries/rdc>          point      := rjoin(values, LinkSet_not_unique/key, LinkSet_not_unique/point);
+			// attribute<geometries/rdc>          nextpoint  := rjoin(values, LinkSet_not_unique/key, LinkSet_not_unique/nextpoint);
+			// attribute<RoadsWithLocations>      SequenceNr := rjoin(values, LinkSet_not_unique/key, LinkSet_not_unique/SequenceNr);
+			// attribute<typeringen/OSM/wegtype>  wegtype    := rjoin(values, LinkSet_not_unique/key, LinkSet_not_unique/wegtype);
+
+			// attribute<geometries/rdc>          segments(arc) := points2sequence(pointset/point, pointset/ArcID, pointset/VolgNr);
+			// attribute<m>                       lengte        := arc_length(segments, m);
+
+			// unit<uint32> pointset := Union_Unit(LinkSet, LinkSet)
+			// {
+				// attribute<geometries/rdc>   point   := Union_Data(pointset, LinkSet/point, LinkSet/nextpoint);
+				// attribute<LinkSet>          ArcID   := value(ID(pointset) % nrofrows(LinkSet), LinkSet);
+				// attribute<uint32>           VolgNr  := ID(pointset) / nrofrows(LinkSet);
+			// }
+		// }
+
+		unit<uint32> NodeSet  := unique(linkset/pointset/point)
+		,	DialogData = "Values"
+		,	DialogType = "Map"
+		,	FreeData = "False"
+		{
+			attribute<geometries/rdc>  Values;
+			attribute<bool>            InbebouwdeKom     := isDefined(Point_in_Polygon(Values, Brondata/CBS/begrenzing_bebouwd_gebied/BBG_2003/geometry));
+			attribute<uint32>          NrConnectedLinks  := pcount(F1) + pcount(F2);
+		}
+	
+		attribute<NodeSet> F1(LinkSet):= rlookup(LinkSet/point,     NodeSet/Values);
+		attribute<NodeSet> F2(LinkSet):= rlookup(LinkSet/nextpoint, NodeSet/Values);
+
+		attribute<NodeSet> nr_orgNode  (orgDomain)   := rlookup(orgLocations, NodeSet/Values);
+		attribute<NodeSet> nr_destNode (destDomain)  := rlookup(destLocations, NodeSet/Values);
+	}
+*/
+
+
+	unit <uint32> LinkSet := arc2segm(RoadsWithLocations/UnionData)
+	,	DialogData = "segments"
+	,	DialogType = "Map"
+	,	FreeData = "False"
+	{
+		attribute<geometries/rdc>          point;
+		attribute<geometries/rdc>          nextpoint;
+		attribute<RoadsWithLocations>      SequenceNr;
+		attribute<typeringen/OSM/wegtype>  wegtype                      := RoadsWithLocations/wegtype[SequenceNr];
+		attribute<m>                       lengte                       := arc_length(segments, m);
+		attribute<m_s>                     snelheid_in_bebouwde_kom     := typeringen/OSM/wegtype/CarSpeedInside_ms[wegtype];
+		attribute<m_s>                     snelheid_buiten_bebouwde_kom := typeringen/OSM/wegtype/CarSpeedOutside_ms[wegtype];
+		attribute<m>                       lengte_in_bebouwde_kom       := ratio_inBebouwdeKom * lengte;
+		attribute<m>                       lengte_buiten_bebouwde_kom   := lengte-lengte_in_bebouwde_kom;
+
+		attribute<bool>                    point_in_bebouwde_kom        := rjoin(point,     nodeset/values, nodeset/InbebouwdeKom);
+		attribute<bool>                    nextpoint_in_bebouwde_kom    := rjoin(nextpoint, nodeset/values, nodeset/InbebouwdeKom);
+		attribute<ratio>                   ratio_inBebouwdeKom          := 
+			switch(
+				 case( point_in_bebouwde_kom &&  nextpoint_in_bebouwde_kom, value(1, ratio))
+				,case(!point_in_bebouwde_kom && !nextpoint_in_bebouwde_kom, value(0, ratio))
+				,rjoin(id(.),partly_in_bebouwde_kom/nr_OrgEntity, partly_in_bebouwde_kom/ratio_inBebouwdeKom)
+			);
+	
+		attribute<s>                       impedance_link             := network_type == 'car' 
+																			? (lengte_in_bebouwde_kom / snelheid_in_bebouwde_kom + lengte_buiten_bebouwde_kom / snelheid_buiten_bebouwde_kom) 
+																			: network_type == 'bike' 
+																				? (lengte / (wegtype == typeringen/OSM/wegtype/v/ferry 
+																					? 1[m_s] 
+																					: 5.56[m_s])) //20kmph
+																				: (lengte / (wegtype == typeringen/OSM/wegtype/v/ferry 
+																					? 1[m_s] 
+																					: 1.4[m_s])); //5kmph
+		
+		unit<uint32> pointset := Union_Unit(LinkSet, LinkSet)
+		{
+			attribute<geometries/rdc>   point   := Union_Data(pointset, LinkSet/point, LinkSet/nextpoint);
+			attribute<LinkSet>          ArcID   := value(ID(pointset) % nrofrows(LinkSet), LinkSet);
+			attribute<uint32>           VolgNr  := ID(pointset) / nrofrows(LinkSet);
+		}
+		attribute<geometries/rdc> segments(arc) := points2sequence(pointset/point, pointset/ArcID, pointset/VolgNr);
+
+		unit<uint32> partly_in_bebouwde_kom := Subset((LinkSet/point_in_bebouwde_kom && !LinkSet/nextpoint_in_bebouwde_kom) || (! LinkSet/point_in_bebouwde_kom &&  LinkSet/nextpoint_in_bebouwde_kom))
+		,	DialogType = "Map"
+		,	DialogData = "segment"
+		{
+			attribute<geometries/rdc> point                := LinkSet/point[nr_OrgEntity];
+			attribute<geometries/rdc> nextpoint             := LinkSet/nextpoint[nr_OrgEntity];
+			attribute<geometries/rdc> segment(arc)          := LinkSet/segments[nr_OrgEntity];
+			attribute<ratio>          ratio_inBebouwdeKom   := MakeDefined(mean(CalcPoint/InbebouwdeKom, CalcPoint/SequenceNr)[ratio], 0.5[ratio]);
+
+			unit<uint32> CalcPoint := dyna_point(point, nextpoint, 5m) // om de x meter worden punten op de weg gelegd om te bepalen welk gedeelte van de weg in de bebouwde kom valt.
+			,	DialogType = "Map"
+			,	DialogData = "point"
+			{
+				attribute<float32> InbebouwdeKom := isDefined(Point_in_Polygon(Point, Brondata/CBS/begrenzing_bebouwd_gebied/BBG_2003/geometry)) ? float32(1) : float32(0);
+			}
+		}
+	}
+	
+	unit<uint32> NodeSet  := unique(linkset/pointset/point)
+	,	DialogData = "Values"
+	,	DialogType = "Map"
+	,	FreeData = "False"
+	{
+		attribute<geometries/rdc>  Values;
+		attribute<bool>            InbebouwdeKom     := isDefined(Point_in_Polygon(Values, Brondata/CBS/begrenzing_bebouwd_gebied/BBG_2003/geometry));
+		attribute<uint32>          NrConnectedLinks  := pcount(F1) + pcount(F2);
+	}
+
+	attribute<NodeSet> F1(LinkSet):= rlookup(LinkSet/point,     NodeSet/Values);
+	attribute<NodeSet> F2(LinkSet):= rlookup(LinkSet/nextpoint, NodeSet/Values);
+
+	container ConnectingLinks 
+	// hiermee wordt voor ieder begin en eind node het aantal geconnecte links bepaald
+	// dit bepaalt of het een bocht (2 links), zijweg (3 links), kruising (4 links) of complexe kruising (meer dan 4 links) is
+	// afhankelijk van dit aantal wordt een aantal seconden opgeteld bij de totale impedance
+	:	FreeData = "False"
+	{
+		// helft van de opgegeven waarden omdat er zowel bij begin als einde een factor wordt opgeteld
+		parameter<s>       Impedance2Links    := 0[s];
+		parameter<s>       Impedance3Links    := 2[s];
+		parameter<s>       Impedance4Links    := 5[s];
+		parameter<s>       Impedance_gt4Links := 6[s];
+
+		attribute<uint32>  Start(LinkSet)     := NodeSet/NrConnectedLinks[F1];
+		attribute<uint32>  End  (LinkSet)     := NodeSet/NrConnectedLinks[F2];
+	
+		attribute<s> impedance_Start (LinkSet):=
+			switch(
+				 case(Start <= 2, Impedance2Links)
+				,case(Start  = 3, Impedance3Links)
+				,case(Start  = 4, Impedance4Links)
+				,Impedance_gt4Links
+			);
+	
+		attribute<s> impedance_End (LinkSet):=
+			switch(
+				 case(End <= 2, Impedance2Links)
+				,case(End  = 3, Impedance3Links)
+				,case(End  = 4, Impedance4Links)
+				,Impedance_gt4Links
+			);
+	}
+	
+	attribute<s> impedance (LinkSet) := linkset/impedance_link + ConnectingLinks/impedance_Start + ConnectingLinks/impedance_End;
+	
+	unit<uint32> negative_or_zero_impedence := subset(impedance <= 0[s])
+	, DialogData = "segments"
+	, DialogType = "map"
+	{
+		attribute<geometries/rdc>          segments(arc)      := LinkSet/segments[nr_OrgEntity];
+		attribute<typeringen/OSM/wegtype>  wegtype            := LinkSet/wegtype[nr_OrgEntity];
+		attribute<m>                       lengte             := LinkSet/lengte[nr_OrgEntity];
+		attribute<s>                       impedance          := ../impedance[nr_OrgEntity];
+		attribute<s>                       impedance_link     := LinkSet/impedance_link[nr_OrgEntity];
+		attribute<s>                       impedance_Start    := ConnectingLinks/impedance_Start[nr_OrgEntity];
+		attribute<s>                       impedance_End      := ConnectingLinks/impedance_End[nr_OrgEntity];
+		
+		
+		attribute<m_s>                     snelheid_in_bebouwde_kom     := LinkSet/snelheid_in_bebouwde_kom[nr_OrgEntity];
+		attribute<m_s>                     snelheid_buiten_bebouwde_kom := LinkSet/snelheid_buiten_bebouwde_kom[nr_OrgEntity];
+		attribute<m>                       lengte_in_bebouwde_kom       := LinkSet/lengte_in_bebouwde_kom[nr_OrgEntity];
+		attribute<m>                       lengte_buiten_bebouwde_kom   := LinkSet/lengte_buiten_bebouwde_kom[nr_OrgEntity];
+
+	}
+
+	attribute<NodeSet> nr_orgNode  (orgDomain)   := rlookup(orgLocations, NodeSet/Values);
+	attribute<NodeSet> nr_destNode (destDomain)  := rlookup(destLocations, NodeSet/Values);
+
+	unit<uint32> connected_nodes := connected_parts(OrgToDest/F1, OrgToDest/F2)
+	,	FreeData = "False"
+	{
+		attribute<uint32> nr_nodes := sum(const(1, OrgToDest/NodeSet, uint32), partnr);
+	}
+}

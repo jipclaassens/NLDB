@@ -1,0 +1,85 @@
+container Analyse
+{	
+	#include <Operator_test_vergelijking.dms>
+	#include <LISA_bedrijfslocaties.dms>
+	#include <COROP_dist.dms>
+	#include <AvailableSpaceApeksha.dms>
+	
+	container GemSize
+	{
+		unit<uint32> Gem17 := brondata/CBS/regios/gemeenten/gem_src/j2017
+		, DialogType = "map"
+		, DialogData = "geometry"
+		{
+			attribute<geometries/rdc> geometry (polygon) := brondata/CBS/regios/gemeenten/gem_src/j2017/geometry;
+			attribute<string>         label              := brondata/CBS/regios/gemeenten/gem_src/j2017/label;
+			attribute<string>         name               := replace(label,'-', '_', ' ', '_', '(', '', ')', '', '.', '', '''', '');
+			attribute<float32>        x_range            := ='union_data(.,'+ AsItemList( ' bbox/'+name+'/Gemeente_selectie/X_range')+')';
+			attribute<float32>        y_range            := ='union_data(.,'+ AsItemList( ' bbox/'+name+'/Gemeente_selectie/Y_range')+')';
+		}
+		
+		container bbox := 
+			for_each_ne(
+				Gem17/name
+				, 'BboxT(' +quote(Gem17/name)+ ')'
+			);
+		
+		Template BboxT
+		{
+			parameter<string> gemeente;
+			
+			unit<uint32> Gemeente_selectie := subset(Gem17/name == gemeente)
+			{
+				attribute<geometries/rdc> geometry (poly) := Gem17/geometry[nr_OrgEntity];
+				attribute<geometries/rdc> lb              := lower_bound(geometry);
+				attribute<geometries/rdc> ub              := upper_bound(geometry);
+				
+				attribute<float32>        X_lb     := PointCol(lb);
+				attribute<float32>        Y_lb     := PointRow(lb);
+				attribute<float32>        X_ub     := PointCol(ub);
+				attribute<float32>        Y_ub     := PointRow(ub);
+				
+				attribute<float32>        X_range  := X_ub - X_lb;
+				attribute<float32>        Y_range  := Y_ub - Y_lb;
+			}
+		}
+		
+	}
+
+	#include <Alternatieve_BBG.dms>
+	#include <NetwerkDist.dms>
+	#include <PC6_PC6.dms>
+	#include <parken.dms>
+	
+	container Percelen_per_CBSVierkant : FreeData = "False", using = "geometries"
+	{
+		unit<uint32> BRK_vierkant_intersect := overlay_polygon(NL_grid/domain_poly/poly[rdc_mm], /Brondata/BRK/Perceel/Geometry[rdc_mm])
+		{
+		 attribute<rdc>               centroid                             := centroid_or_mid(Geometry[rdc]);
+		 attribute<NL_grid/domain>    NL_grid_domain_rel                   := centroid[NL_grid/domain];
+		 attribute<uint32>            kavelcount_intersect(NL_grid/domain) := count(centroid, NL_grid_domain_rel), StorageName = "%LocalDataDir%/Output/Kaveldichtheid.tif";
+		}
+		// attribute<rdc>                sample_points := centroid_or_mid(Geometry[rdc]);
+	
+	}
+	#include <AMS_SmartHubs.dms>
+	
+	container GeometieenTest : using = "geometries"
+	{
+		unit<uint32> Polygon := /Brondata/CBS/Begrenzing_Bebouwd_Gebied/Bevolkingskern_2011/shapes
+		{
+			attribute<rdc> geometry       (poly)  := /Brondata/CBS/Begrenzing_Bebouwd_Gebied/Bevolkingskern_2011/shapes/geometry;
+			attribute<rdc> geometry_simpl (poly)  := bg_simplify_polygon(geometry, 1d);
+			
+			attribute<rdc> buffer_5m   (poly) := bg_buffer_multi_polygon(geometry, 5d, 8b);
+			attribute<rdc> buffer_500m (poly) := bg_buffer_multi_polygon(geometry, 500d, 8b);
+			
+		}
+		
+		// bg_buffer_multi_polygon()
+		// bg_buffer_linestring()
+		// bg_simplify()
+		
+		
+	}
+}

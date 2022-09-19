@@ -1,0 +1,505 @@
+container BAG : using = "typeringen;eenheden"
+{ 
+	container Snapshots
+	{
+		// parameter<string> SnapshotDir := '%SourceDataDir%/BAG/snapshots.ext/20120101';
+		parameter<string> SnapshotDir := '%SourceDataDir%/BAG/snapshots.ext/20210701';
+		
+		container Panden
+		{
+		
+			unit<uint32> pand_src
+			:	StorageName     = "= SnapshotDir + '/pand.fss'"
+			,	StorageReadOnly = "True"
+			{
+				attribute<geometries/rdc_mm>            geometry_mm (polygon) ;
+				attribute<geometries/rdc>               geometry (polygon)             := geometry_mm[geometries/rdc];
+				attribute<string>                       identificatie;
+				attribute<eenheden/jaar>                bouwjaar;
+				
+				attribute<geometries/rdc_mm>            NW     := lower_bound(pand_src/geometry_mm);
+				attribute<geometries/rdc_mm>            SE     := upper_bound(pand_src/geometry_mm);
+				attribute<int32>                        X_ext  := PointCol(SE) - PointCol(NW);
+				attribute<int32>                        Y_ext  := PointRow(SE) - PointRow(NW);
+				attribute<.>               per_grid (NL_grid/domain)            := poly2grid(geometry, NL_grid/domain);
+				
+				container meta
+				{
+					attribute<string>        status        (pand_src);
+					
+					unit<uint32> uq := unique(status);
+				}
+			}
+			
+			unit<uint32> pand := subset(
+						(pand_src/X_ext < 1000000i && pand_src/Y_ext < 1000000i) 
+					&& 	(pand_src/meta/status == 'Pand in gebruik' 
+						|| pand_src/meta/status == 'Pand in gebruik (niet ingemeten)' 
+						|| pand_src/meta/status == 'Pand buiten gebruik'))
+			, DialogType = "Map"
+			, DialogData = "geometry_mm"
+			, FreeData = "False"
+			{
+				unit<uint32> vbo_domein := VBOs/vbo;
+				attribute<geometries/rdc_mm>                geometry_mm (polygon)          := pand_src/geometry_mm[Nr_OrgEntity];
+				attribute<geometries/rdc>                   geometry (polygon)             := geometry_mm[geometries/rdc];
+				attribute<string>                           identificatie                  := pand_src/identificatie[Nr_OrgEntity];
+				attribute<eenheden/jaar>                    bouwjaar                       := pand_src/bouwjaar[Nr_OrgEntity];
+				attribute<geometries/rdc>                   centroid                       := centroid_or_mid(geometry);
+				attribute<NL_grid/domain_25m>               NL_grid_domain_25m_rel         := centroid[NL_grid/domain_25m];
+				attribute<m2>                               footprint                      := area(geometry, eenheden/m2);
+				attribute<uint32>                           count_vbo_pand                 := pcount(pand_vbo_rel);
+				attribute<.>                                pand_vbo_rel (vbo_domein)      := point_in_polygon(vbo_domein/geometry, geometry);
+				attribute<int32>                            sum_vbo_opp                    := sum(vbo_domein/oppervlakte_trunc, vbo_domein/pand_rel);
+				
+				attribute<typeringen/vbo_gebruiksdoel>                 DominantFunction      := Footprint_VBOOpp_per_vbo_functie/argmax;
+				
+				container Footprint_VBOOpp_per_vbo_functie :=
+					for_each_nedv(
+						vbo_gebruiksdoel/name
+						,'((sum(vbo_domein/gebruiksdoel_class == vbo_gebruiksdoel/V/'+vbo_gebruiksdoel/name+' ? vbo_domein/oppervlakte_trunc[m2] : (0/0)[m2], vbo_domein/pand_rel)) / sum_vbo_opp[m2]) * footprint'
+						, pand
+						, float32
+					), FreeData = "False", using = "eenheden;typeringen"
+				{
+					attribute<vbo_gebruiksdoel> ArgMax (..) := ='!IsDefined(bijeenkomst) ? (0/0)[vbo_gebruiksdoel] : ArgMax('+AsItemList(vbo_gebruiksdoel/name)+')[vbo_gebruiksdoel]';
+				}
+				
+				
+				// attribute<bool>                             IsinEricsSquare                := IsDefined(Brondata/Overig/read_BBG_Eric[NL_grid_domain_25m_rel]);
+				// attribute<Brondata/CBS/regios/MRDH>                mrdh_rel  := point_in_polygon(centroid, Brondata/CBS/regios/MRDH/Geometry);
+				
+				// unit<uint32> IsEricsSet := subset(IsinEricsSquare)
+				// {
+					// attribute<geometries/rdc>   geometry (poly) := ../geometry[nr_OrgEntity];
+					// attribute<uint32> per_grid (NL_grid/domain_5m) := poly2grid(geometry, NL_grid/domain_5m);
+				// }
+				
+				attribute<float32>                          area                           := abs(area(geometry, float32));
+				attribute<int16>                            AHN_inwinjaar                  := rjoin(identificatie, Brondata/Overig/pand_2020_hoogte/identificatie, /Brondata/Overig/pand_2020_hoogte/AHN_inwinjaar)[int16];
+				attribute<uint16>                           hoogte                         := rjoin(identificatie, Brondata/Overig/pand_2020_hoogte/identificatie, /Brondata/Overig/pand_2020_hoogte/hoogte);
+				attribute<uint16>                           hoogte_nok                     := rjoin(identificatie, Brondata/Overig/pand_2020_hoogte/identificatie, /Brondata/Overig/pand_2020_hoogte/hoogte_nok);
+				attribute<float32>                          hoogte_maaiveld                := rjoin(identificatie, Brondata/Overig/pand_2020_hoogte/identificatie, /Brondata/Overig/pand_2020_hoogte/hoogte_maaiveld);
+
+				attribute<pand>                         pand_vbo_rel_bijeenkomst      (VBOs/vbo/GebruiksdoelSets/bijeenkomst/GebruiksdoelSet)      := point_in_polygon(VBOs/vbo/GebruiksdoelSets/bijeenkomst/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_cel              (VBOs/vbo/GebruiksdoelSets/cel/GebruiksdoelSet)              := point_in_polygon(VBOs/vbo/GebruiksdoelSets/cel/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_gezondheidszorg  (VBOs/vbo/GebruiksdoelSets/gezondheidszorg/GebruiksdoelSet)  := point_in_polygon(VBOs/vbo/GebruiksdoelSets/gezondheidszorg/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_industrie        (VBOs/vbo/GebruiksdoelSets/industrie/GebruiksdoelSet)        := point_in_polygon(VBOs/vbo/GebruiksdoelSets/industrie/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_kantoor          (VBOs/vbo/GebruiksdoelSets/kantoor/GebruiksdoelSet)          := point_in_polygon(VBOs/vbo/GebruiksdoelSets/kantoor/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_logies           (VBOs/vbo/GebruiksdoelSets/logies/GebruiksdoelSet)           := point_in_polygon(VBOs/vbo/GebruiksdoelSets/logies/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_onderwijs        (VBOs/vbo/GebruiksdoelSets/onderwijs/GebruiksdoelSet)        := point_in_polygon(VBOs/vbo/GebruiksdoelSets/onderwijs/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_overige_gebruiks (VBOs/vbo/GebruiksdoelSets/overige_gebruiks/GebruiksdoelSet) := point_in_polygon(VBOs/vbo/GebruiksdoelSets/overige_gebruiks/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_sport            (VBOs/vbo/GebruiksdoelSets/sport/GebruiksdoelSet)            := point_in_polygon(VBOs/vbo/GebruiksdoelSets/sport/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_winkel           (VBOs/vbo/GebruiksdoelSets/winkel/GebruiksdoelSet)           := point_in_polygon(VBOs/vbo/GebruiksdoelSets/winkel/GebruiksdoelSet/Geometry, geometry);
+				attribute<pand>                         pand_vbo_rel_woon             (VBOs/vbo/GebruiksdoelSets/woon/GebruiksdoelSet)             := point_in_polygon(VBOs/vbo/GebruiksdoelSets/woon/GebruiksdoelSet/Geometry, geometry);
+
+				attribute<uint32>                           count_vbo_pand_bijeenkomst       := pcount(pand_vbo_rel_bijeenkomst);
+				attribute<uint32>                           count_vbo_pand_cel               := pcount(pand_vbo_rel_cel);
+				attribute<uint32>                           count_vbo_pand_gezondheidszorg   := pcount(pand_vbo_rel_gezondheidszorg);
+				attribute<uint32>                           count_vbo_pand_industrie         := pcount(pand_vbo_rel_industrie);
+				attribute<uint32>                           count_vbo_pand_kantoor           := pcount(pand_vbo_rel_kantoor);
+				attribute<uint32>                           count_vbo_pand_logies            := pcount(pand_vbo_rel_logies);
+				attribute<uint32>                           count_vbo_pand_onderwijs         := pcount(pand_vbo_rel_onderwijs);
+				attribute<uint32>                           count_vbo_pand_overige_gebruiks  := pcount(pand_vbo_rel_overige_gebruiks);
+				attribute<uint32>                           count_vbo_pand_sport             := pcount(pand_vbo_rel_sport);
+				attribute<uint32>                           count_vbo_pand_winkel            := pcount(pand_vbo_rel_winkel);
+				attribute<uint32>                           count_vbo_pand_woon              := pcount(pand_vbo_rel_woon);
+				
+				attribute<uint32>                           count_vbo_pand_alle_functies     := count_vbo_pand_bijeenkomst 
+																								+ count_vbo_pand_cel 
+																								+ count_vbo_pand_gezondheidszorg 
+																								+ count_vbo_pand_industrie 
+																								+ count_vbo_pand_kantoor
+																								+ count_vbo_pand_logies
+																								+ count_vbo_pand_onderwijs
+																								+ count_vbo_pand_overige_gebruiks
+																								+ count_vbo_pand_sport
+																								+ count_vbo_pand_winkel
+																								+ count_vbo_pand_woon;
+				attribute<int32>                          som_oppervlak_vbo                := sum(VBOs/vbo/oppervlakte_trunc, VBOs/vbo/pand_rel);
+				// attribute<float32>                          verdiepingen                     := ((som_oppervlak_vbo / area) >= 50f) && (area >= 3000f) 
+																									// ? 50f 
+																									// : ((som_oppervlak_vbo / area) >= 15f) && (area <= 3000f)
+																										// ? (0/0)[float32]
+																										// : (som_oppervlak_vbo / area);
+				
+				unit<uint32> Bouwjaarvoor1996 := subset(bouwjaar <= 1996[jaar])
+				, DialogType = "Map"
+				, DialogData = "geometry"
+				{
+					attribute<geometries/rdc> geometry (poly) := pand/geometry[nr_OrgEntity];
+				}
+			}
+			
+			// unit<uint32> Pand_StudyArea := subset(IsDefined(pand/mrdh_rel))
+			// , DialogType = "Map"
+			// , DialogData = "geometry_mm"
+			// , FreeData = "False"
+			// {
+				// attribute<geometries/rdc>                   geometry (poly)             := pand/geometry[Nr_OrgEntity];
+			// }
+			
+			unit<uint32> pand_vbo := subset(pand/count_vbo_pand > 0)
+			, DialogType = "Map"
+			, DialogData = "geometry_mm"
+			, FreeData = "False"
+			{
+				attribute<geometries/rdc_mm>                geometry_mm (poly)             := pand/geometry_mm[Nr_OrgEntity];
+				attribute<geometries/rdc>                   geometry (poly)                := geometry_mm[geometries/rdc];
+				attribute<string>                           identificatie                  := pand/identificatie[Nr_OrgEntity];
+				attribute<eenheden/jaar>                    bouwjaar                       := pand/bouwjaar[Nr_OrgEntity];
+				attribute<geometries/rdc>                   centroid                       := centroid_or_mid(geometry);
+				attribute<m2>                               pand_area                      := abs(area(geometry, m2));
+
+				attribute<uint32>                           count_vbo_pand_bijeenkomst       := pand/count_vbo_pand_bijeenkomst[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_cel               := pand/count_vbo_pand_cel[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_gezondheidszorg   := pand/count_vbo_pand_gezondheidszorg[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_industrie         := pand/count_vbo_pand_industrie[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_kantoor           := pand/count_vbo_pand_kantoor[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_logies            := pand/count_vbo_pand_logies[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_onderwijs         := pand/count_vbo_pand_onderwijs[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_overige_gebruiks  := pand/count_vbo_pand_overige_gebruiks[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_sport             := pand/count_vbo_pand_sport[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_winkel            := pand/count_vbo_pand_winkel[nr_OrgEntity];
+				attribute<uint32>                           count_vbo_pand_woon              := pand/count_vbo_pand_woon[nr_OrgEntity];
+				
+				attribute<uint32>                           count_vbo_pand_alle_functies     := pand/count_vbo_pand_alle_functies[nr_OrgEntity];
+				
+				attribute<uint32>            count_Wonen                := count_vbo_pand_woon;
+				attribute<uint32>            count_RetHoreca            := count_vbo_pand_winkel + count_vbo_pand_logies;
+				attribute<uint32>            count_SocCulVz             := count_vbo_pand_bijeenkomst + count_vbo_pand_cel + count_vbo_pand_gezondheidszorg + count_vbo_pand_onderwijs + count_vbo_pand_sport;
+				attribute<uint32>            count_Bedrijven            := count_vbo_pand_industrie + count_vbo_pand_kantoor;
+				
+				attribute<typeringen/vbo_gebruiksdoel>           DominantFunction      := pand/DominantFunction[nr_OrgEntity];
+				attribute<typeringen/functie_klassen>            functie_argmax               := argmax(count_wonen, count_socculvz, count_rethoreca, count_bedrijven)[typeringen/functie_klassen];
+				
+				attribute</Brondata/CBS/regios/buurten/src_2016>                buurt_rel  := point_in_polygon(centroid, /Brondata/CBS/regios/buurten/src_2016/Geometry);
+				
+				attribute<typeringen/BBG>           type  := 
+					switch(
+						case(functie_argmax == 0b, const(4[typeringen/BBG], pand_vbo))
+						, case(functie_argmax == 1b, const(7[typeringen/BBG], pand_vbo))
+						, case(functie_argmax == 2b, const(5[typeringen/BBG], pand_vbo))
+						, case(functie_argmax == 3b, const(8[typeringen/BBG], pand_vbo))
+						, (0/0)[typeringen/BBG]
+					);
+					
+				// unit<uint32> Hulst := subset(buurt_rel == 7525)
+				// , StorageName = "%projDir%/data/Panden_hulst.dbf"
+				// {
+					// attribute<geometries/rdc>                   geometry (poly) := ../geometry[nr_OrgEntity], StorageName = "%projDir%/data/Panden_hulst.shp";
+					// attribute<string>                           identificatie   := ../identificatie[nr_OrgEntity];
+					// attribute<eenheden/jaar>                    bouwjaar        := ../bouwjaar[nr_OrgEntity];
+					// attribute<typeringen/BBG>                   type            := ../type[nr_OrgEntity];
+				// }
+			}
+			
+			unit<uint32> pand_woonvbo := subset(pand/count_vbo_pand_woon > 0)
+			, DialogType = "Map"
+			, DialogData = "geometry_mm"
+			, FreeData = "False"
+			// , StorageName = "= SnapshotDir + '/pand_met_woonvbo_hoogte.fss'"
+			{
+				attribute<geometries/rdc_mm>                geometry_mm (poly)             := pand/geometry_mm[Nr_OrgEntity];
+				attribute<geometries/rdc>                   geometry (poly)                := geometry_mm[geometries/rdc];
+				attribute<string>                           identificatie                  := pand/identificatie[Nr_OrgEntity];
+				attribute<eenheden/jaar>                    bouwjaar                       := pand/bouwjaar[Nr_OrgEntity];
+				attribute<geometries/rdc>                   centroid                       := centroid_or_mid(geometry);
+				attribute<m2>                               pand_area                      := abs(area(geometry, m2));
+				
+				// attribute<jaar>                             AHN_inwinjaar                  := (pand/AHN_inwinjaar[Nr_OrgEntity])[jaar];
+				// attribute<jaar>                             AHN_inwinjaar_corr             := bouwjaar >= AHN_inwinjaar ? (0/0)[jaar] : AHN_inwinjaar;
+				// attribute<float32>                          hoogte                          := (pand/hoogte[Nr_OrgEntity])[float32] / 100f;
+				// attribute<float32>                          hoogte_nok                     := (pand/hoogte_nok[Nr_OrgEntity])[float32] / 100f;
+				// attribute<float32>                          hoogte_maaiveld                := pand/hoogte_maaiveld[Nr_OrgEntity];
+				
+				// attribute<float32>                          hoogte_proxy                   := pand/verdiepingen[Nr_OrgEntity] * 2.8f;
+				
+				// attribute<float32>                          hoogte_aux                     := (hoogte <= 2.50f || IsNull(hoogte)) 
+																								// ? (hoogte_proxy <= 2.5f 
+																									// ? (0/0)[float32] 
+																									// : hoogte_proxy) 
+																								// : hoogte;
+				
+				
+
+				attribute<uint32>                           count_vbo_pand_woon            := pand/count_vbo_pand_woon[nr_OrgEntity];
+				attribute<NL_grid/domain>                   NL_grid_domain_rel             := centroid[NL_grid/domain];
+
+			}
+			
+			unit<uint32> Overige_panden := subset(!IsDefined(rlookup(pand/identificatie, pand_vbo/identificatie)) && pand/area >= 100f)
+			, DialogType = "Map"
+			, DialogData = "geometry"
+			, FreeData = "False"
+			{
+				attribute<geometries/rdc_mm>                geometry_mm (poly)             := pand/geometry_mm[Nr_OrgEntity];
+				attribute<geometries/rdc>                   geometry (poly)                := geometry_mm[geometries/rdc];
+				attribute<string>                           identificatie                  := pand/identificatie[Nr_OrgEntity];
+				attribute<float32>                          area                           := abs(area(geometry, float32));
+			}
+		}
+		
+		container VBOs
+		{
+			unit<uint32> vbo
+			:	StorageName     = "= SnapshotDir + '/vbo.fss'"
+			,	StorageReadOnly = "True"
+			, 	FreeData        = "False"
+			,	DialogType = "Map"
+			,	DialogData = "geometry_mm"
+
+			{
+				attribute<geometries/rdc_mm>    geometry_mm; 
+				attribute<geometries/rdc>       geometry                := geometry_mm[geometries/rdc];
+				attribute<string>               identificatie;
+				attribute<int32>                oppervlakte;
+				// attribute<float32>              oppervlakte_trunc       := (!IsDefined(pand_rel) || oppervlakte == 999999i || oppervlakte == 999998i || oppervlakte == 888888i || oppervlakte > 100000i) ? (pand_area / count_vbo_per_pand[float32]) : oppervlakte[float32];
+
+				attribute<int32>                oppervlakte_trunc       := oppervlakte == 9999i || oppervlakte == 99999i 
+																				? (0/0)[int32]
+																				: oppervlakte < Parameters/VBO_opp_truncation
+																					? oppervlakte
+																					:  Parameters/VBO_opp_truncation_defaultvalue;
+
+				attribute<float32>              pand_area               := rjoin(pand_rel, id(panden/pand), panden/pand/area);
+				attribute<uint32>               count_vbo_per_pand      := rjoin(pand_rel, id(panden/pand), panden/pand/count_vbo_pand_alle_functies);
+				attribute<string>               nummeraanduiding_id;
+				attribute<NL_grid/domain>       NL_grid_domain_rel      := geometry[NL_grid/domain];
+				attribute<string>               pand_id_geom            := panden/pand/identificatie[point_in_polygon(geometry_mm, panden/pand/geometry_mm)], FreeData = "False";
+				
+				attribute<uint32>               pand_rel                := point_in_polygon(geometry, panden/pand/geometry);
+				// attribute<uint32>               count_vbo_pand          := rjoin(pand_id_geom, panden/pand/identificatie, panden/pand/count_vbo_pand);
+
+				attribute<string>               straatnaam              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/straatnaam);
+				attribute<string>               postcode                := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/postcode);
+				attribute<int32>                huisnummer              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/huisnummer);
+				attribute<string>               huisletter              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/huisletter);
+				attribute<string>               toevoeging              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/toevoeging);
+				attribute<string>               woonplaatsnaam          := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/woonplaatsnaam);
+				
+				attribute<string> gebruiksdoel := 
+					gebruiksdoelen/woon 
+						? 'woon' 
+						: (gebruiksdoelen/bijeenkomst 
+							? 'bijeenkomst' 
+							: (gebruiksdoelen/cel 
+								? 'cel' 
+								: (gebruiksdoelen/gezondheidszorg 
+									? 'gezondheidszorg' 
+									: (gebruiksdoelen/industrie 
+										? 'industrie' 
+										: (gebruiksdoelen/kantoor 
+											? 'kantoor' 
+											: (gebruiksdoelen/logies 
+												? 'logies' 
+												: (gebruiksdoelen/onderwijs 
+													? 'onderwijs' 
+													: (gebruiksdoelen/overige_gebruiks 
+														? 'overige_gebruiks' 
+														: (gebruiksdoelen/sport 
+															? 'sport' 
+															: (gebruiksdoelen/winkel 
+																? 'winkel' 
+																: ''
+															))))))))));
+				attribute</typeringen/vbo_gebruiksdoel> gebruiksdoel_class := rlookup(gebruiksdoel, /typeringen/vbo_gebruiksdoel/name);
+				
+				unit<uint32> opp_subset := subset(oppervlakte_trunc > 100000i)
+				,	DialogData = "geometry"
+				,	DialogType = "map"
+				{
+					attribute<geometries/rdc> geometry := vbo/geometry[nr_OrgEntity];
+					attribute<int32>  oppervlakte_trunc := vbo/oppervlakte_trunc[nr_OrgEntity];
+				}
+				
+				container gebruiksdoelen :=
+					for_each_ndv(
+						typeringen/vbo_gebruiksdoel/name
+						, vbo
+						, bool
+					);
+				
+				container meta
+				{
+					attribute<string>        status        (vbo);
+				}
+
+				container GebruiksdoelSets :=
+					for_each_ne(
+						typeringen/vbo_gebruiksdoel/name
+						, 'MaakGebruiksdoelSets_templ(' + quote(typeringen/vbo_gebruiksdoel/name) +')'
+					);
+						
+				Template MaakGebruiksdoelSets_templ
+				{
+					///
+					parameter<string> name;
+					///
+					
+					unit<uint32> GebruiksdoelSet := ='subset(vbo/gebruiksdoelen/' + name + ' 
+						&& (vbo/meta/status == ''Verblijfsobject buiten gebruik'' || vbo/meta/status == ''Verblijfsobject in gebruik'' || vbo/meta/status == ''Verblijfsobject in gebruik (niet ingemeten)'')
+						)'
+					,	DialogType = "Map"
+					,	DialogData = "geometry_mm"
+					, 	FreeData = "False"
+					{
+						attribute<geometries/rdc_mm>      geometry_mm                 := vbo/geometry_mm[nr_OrgEntity];
+						attribute<geometries/rdc>         geometry                    := geometry_mm[geometries/rdc];
+						attribute<int32>                  oppervlakte                 := vbo/oppervlakte[nr_OrgEntity];
+						
+						// attribute<nrwonha>                count_ha (NL_grid/points)   := (count(geometry, geometry[NL_grid/domain])[nrwonha])[NL_grid/points/NL_grid_domain_rel];  
+						
+						// attribute<.>                      buurt_rel                                           := point_in_polygon(geometry, /Brondata/CBS/regios/buurten/src_2016/Geometry);
+						// attribute<ha>                     buurt_area   (Brondata/CBS/regios/buurten/src_2016) := abs(area(Brondata/CBS/regios/buurten/src_2016/geometry, m2))[ha];
+						// attribute<nrwoningen>             buurt_count  (Brondata/CBS/regios/buurten/src_2016) := count(geometry, buurt_rel)[int32];
+						// attribute<nrwonha>                buurt_won_ha (Brondata/CBS/regios/buurten/src_2016) := buurt_count[float32] / buurt_area;
+						
+						// attribute<.>                      wijk_rel                                           := point_in_polygon(geometry, /Brondata/CBS/regios/wijken/src_2016/Geometry);
+						// attribute<ha>                     wijk_area    (Brondata/CBS/regios/wijken/src_2016) := abs(area(Brondata/CBS/regios/wijken/src_2016/geometry, m2))[ha];
+						// attribute<nrwoningen>             wijk_count   (Brondata/CBS/regios/wijken/src_2016) := count(geometry, wijk_rel)[int32];
+						// attribute<nrwonha>                wijk_won_ha  (Brondata/CBS/regios/wijken/src_2016) := wijk_count[float32] / wijk_area;
+						
+						// attribute<.>                      stadsdeel_rel                                                    := point_in_polygon(geometry, /Brondata/Overig/Amsterdam_Stadsdelen_Bewoond/Geometry);
+						// attribute<ha>                     stadsdeel_area    (Brondata/Overig/Amsterdam_Stadsdelen_Bewoond) := abs(area(Brondata/Overig/Amsterdam_Stadsdelen_Bewoond/geometry, m2))[ha];
+						// attribute<nrwoningen>             stadsdeel_count   (Brondata/Overig/Amsterdam_Stadsdelen_Bewoond) := count(geometry, stadsdeel_rel)[int32];
+						// attribute<nrwonha>                stadsdeel_won_ha  (Brondata/Overig/Amsterdam_Stadsdelen_Bewoond) := stadsdeel_count[float32] / stadsdeel_area;
+						
+						// attribute<string>                 straatnaam              := vbo/straatnaam[nr_OrgEntity];
+						// attribute<string>                 postcode                := vbo/postcode[nr_OrgEntity];
+						// attribute<int32>                  huisnummer              := vbo/huisnummer[nr_OrgEntity];
+						// attribute<string>                 huisletter              := vbo/huisletter[nr_OrgEntity];
+						// attribute<string>                 toevoeging              := vbo/toevoeging[nr_OrgEntity];
+						// attribute<string>                 woonplaatsnaam          := vbo/woonplaatsnaam[nr_OrgEntity];
+						
+						unit<uint32> count_non_zero := Subset(count_ha > 0f)
+						,	DialogType = "Map"
+						,	DialogData = "geometry"
+						{
+							attribute<geometries/rdc>         geometry := NL_grid/points/geometry[nr_OrgEntity];
+							attribute<nrwonha>                count_ha := GebruiksdoelSet/count_ha[nr_OrgEntity];  
+						}
+						
+						unit<uint32> sloten := subset(wijk_rel == 954)
+						{
+						
+							attribute<geometries/rdc>         geometry                := ../geometry[nr_OrgEntity];
+							attribute<string>                 straatnaam              := ../straatnaam[nr_OrgEntity];
+							attribute<string>                 postcode                := ../postcode[nr_OrgEntity];
+							attribute<int32>                  huisnummer              := ../huisnummer[nr_OrgEntity];
+							attribute<string>                 huisletter              := ../huisletter[nr_OrgEntity];
+							attribute<string>                 toevoeging              := ../toevoeging[nr_OrgEntity];
+							attribute<string>                 woonplaatsnaam          := ../woonplaatsnaam[nr_OrgEntity];
+						
+						}
+					}
+				}
+				
+				unit<uint32> UtiliteitsFucties := union_unit(GebruiksdoelSets/kantoor/GebruiksdoelSet, GebruiksdoelSets/gezondheidszorg/GebruiksdoelSet, GebruiksdoelSets/onderwijs/GebruiksdoelSet)
+				{
+					attribute<geometries/rdc> geometry     := union_data(., GebruiksdoelSets/kantoor/GebruiksdoelSet/geometry, GebruiksdoelSets/gezondheidszorg/GebruiksdoelSet/geometry, GebruiksdoelSets/onderwijs/GebruiksdoelSet/geometry);
+					attribute<int32>          oppervlakte  := union_data(., GebruiksdoelSets/kantoor/GebruiksdoelSet/oppervlakte, GebruiksdoelSets/gezondheidszorg/GebruiksdoelSet/oppervlakte, GebruiksdoelSets/onderwijs/GebruiksdoelSet/oppervlakte);
+				}
+			}
+		}
+		
+		container Ligplaatsen
+		{
+			unit<uint32> ligplaats
+			:	StorageName     = "= SnapshotDir + '/ligplaats.fss'"
+			,	StorageReadOnly = "True"
+			,	DialogType      = "Map"
+			,	DialogData      = "geometry"
+			{
+				attribute<geometries/rdc>      geometry    (poly)  := geometry_mm[geometries/rdc];
+				attribute<geometries/rdc_mm>   geometry_mm (poly);
+				attribute<string>              identificatie;
+				attribute<string>              nummeraanduiding_id;
+				
+				attribute<string>               straatnaam              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/straatnaam);
+				attribute<string>               postcode                := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/postcode);
+				attribute<int32>                huisnummer              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/huisnummer);
+				attribute<string>               huisletter              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/huisletter);
+				attribute<string>               toevoeging              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/toevoeging);
+				attribute<string>               woonplaatsnaam          := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/woonplaatsnaam);
+				
+				unit<uint32> nevenadres
+				{
+					attribute<string>   nummeraanduiding_id;
+					attribute<string>   ligplaats_id;
+				}
+			}
+		}
+		
+		container Standplaatsen
+		{
+			unit<uint32> Standplaats
+			:	StorageName     = "= SnapshotDir + '/standplaats.fss'"
+			,	StorageReadOnly = "True"
+			,	DialogType      = "Map"
+			,	DialogData      = "geometry"
+			{
+				attribute<geometries/rdc>      geometry    (poly)  := geometry_mm[geometries/rdc];
+				attribute<geometries/rdc_mm>   geometry_mm (poly);
+				attribute<string>              identificatie;
+				attribute<string>              nummeraanduiding_id;
+				
+				attribute<string>               straatnaam              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/straatnaam);
+				attribute<string>               postcode                := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/postcode);
+				attribute<int32>                huisnummer              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/huisnummer);
+				attribute<string>               huisletter              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/huisletter);
+				attribute<string>               toevoeging              := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/toevoeging);
+				attribute<string>               woonplaatsnaam          := rjoin(nummeraanduiding_id, adressen/adres/nummeraanduiding_id, adressen/adres/woonplaatsnaam);
+
+				unit<uint32> nevenadres
+				{
+					attribute<string>   nummeraanduiding_id;
+					attribute<string>   standplaats_id;
+				}
+			}
+		}
+		
+		container Adressen
+		{
+			unit<uint32> adres
+			:	StorageName     = "= SnapshotDir + '/adres.fss'"
+			,	StorageReadOnly = "True"
+			,	DialogType      = "Map"
+			,	DialogData      = "geometry"
+
+			{
+				attribute<string>   straatnaam;
+				attribute<string>   postcode;
+				attribute<int32>    huisnummer;
+				attribute<string>   huisletter;
+				attribute<string>   toevoeging;
+				attribute<string>   woonplaatsnaam;
+				attribute<string>   nummeraanduiding_id;
+
+				attribute<geometries/rdc> 				geometry;
+				attribute<geometries/rdc_mm>         	geometry_mm           	:= geometry[geometries/rdc_mm];
+				
+				unit<uint32> Gemeente := /Brondata/CBS/Regios/Gemeenten/gem_src/j2019;
+				
+				attribute<Gemeente> gemeente_rel := point_in_polygon(geometry, Gemeente/geometry);
+			}
+		}
+		
+		container Woonplaatsen
+		{
+			unit<uint32> woonplaats
+			:	StorageName     = "= SnapshotDir + '/woonplaats.fss'"
+			,	StorageReadOnly = "True"
+			,	DialogType      = "Map"
+			,	DialogData      = "geometry"
+
+			{
+				attribute<string>   identificatie;
+				attribute<string>   woonplaatsNaam;
+
+				attribute<geometries/rdc> 				geometry      (poly)          := geometry_mm[geometries/rdc];
+				attribute<geometries/rdc_mm>         	geometry_mm (poly);
+			}
+		}
+	}
+}

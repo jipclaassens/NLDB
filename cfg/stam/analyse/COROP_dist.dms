@@ -1,0 +1,67 @@
+container COROP_dist : Using = "eenheden"
+{
+	unit<uint32> Corop47 := Brondata/CBS/regios/corop/corop47
+	, DialogData = "geometry"
+	, DialogType = "map"
+	{
+		attribute<geometries/rdc>   geometry  (poly) := Brondata/CBS/regios/corop/corop47/geometry;
+		attribute<geometries/rdc>   centroid         := Brondata/CBS/regios/corop/corop47/centroid;
+		attribute<string>           label            := Brondata/CBS/regios/corop/corop47/label;
+		attribute<string>           name             := replace(label, ' ', '_', '''', '', '-', '_', '/', '_');
+		attribute<float32>          x                := pointcol(centroid);
+		attribute<float32>          y                := pointrow(centroid);
+		
+		container dist := 
+		for_each_ne(
+			Corop47/name
+			, 'CalculateDistance('+quote(Corop47/name)+',Corop47)'
+			);
+			
+		unit<uint32> contiguity := polygon_connectivity(./geometry[ipoint])
+		{
+			attribute<uint32> F1;
+			attribute<uint32> F2;
+			attribute<string> F1_name := Corop47/label[F1];
+			attribute<string> F2_name := Corop47/label[F2];
+		}
+	}
+	
+	template CalculateDistance
+	{
+		//
+		parameter<string> corop_name;
+		unit<uint32> target_domain;
+		//
+		unit<uint32> subset  := Subset(Corop47/name == corop_name)
+		, DialogData = "geometry"
+		, DialogType = "map"
+		{
+			attribute<geometries/rdc>   geometry                        := Corop47/centroid[nr_OrgEntity];
+			attribute<float32>          x                               := PointCol(geometry);
+			attribute<float32>          y                               := PointRow(geometry);
+			
+			attribute<subset>           point_rel (target_domain)       := connect(geometry, target_domain/centroid);		
+
+			attribute<float32>          x_targetdomain (target_domain)  := PointCol(geometry)[point_rel];
+			attribute<float32>          y_targetdomain (target_domain)  := PointRow(geometry)[point_rel];
+			attribute<float32>          delta_x (target_domain)         := abs(x_targetdomain - target_domain/x)^2f;
+			attribute<float32>          delta_y (target_domain)         := abs(y_targetdomain - target_domain/y)^2f;
+
+			attribute<m>                dist (target_domain)            := MakeDefined(sqrt(delta_x + delta_y)[m], 0[m]);
+		}
+	}
+	
+	container DistanceMatrix := 
+		for_each_nedv(
+			Corop47/name
+			, 'Analyse/COROP_dist/corop47/dist/'+string(Corop47/name)+'/subset/dist'
+			, Corop47
+			, m
+		)
+	{
+		attribute<string> name (Corop47) := Corop47/name; 
+	}
+
+
+
+}

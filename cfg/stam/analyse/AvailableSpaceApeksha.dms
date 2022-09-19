@@ -1,0 +1,36 @@
+container AvailableSpaceApeksha: using = "eenheden", FreeData = "false"
+{ 
+	unit<uint32> BAG := /Brondata/BAG/Snapshots/Panden/pand/Bouwjaarvoor1996
+	{
+		attribute<geometries/rdc>  geometry (poly)                  := /Brondata/BAG/Snapshots/Panden/pand/Bouwjaarvoor1996/Geometry;
+		attribute<bool>            IsBuilding (NL_grid/domain_10m)  := IsDefined(poly2grid(geometry, NL_grid/domain_10m));
+	}
+	
+	unit<uint32> BBG := /Brondata/BBG/BBG_1996_2015, FreeData = "false"
+	{
+		parameter<string> BBG_jaar := 'J2015';
+		attribute<bool>            IsInfra   (NL_grid/domain_10m) := ='BBG/PerFunctie/'+BBG_jaar+'/Spoorwegen
+																		|| BBG/PerFunctie/'+BBG_jaar+'/hoofdweg 
+																		|| BBG/PerFunctie/'+BBG_jaar+'/vliegveld';
+		attribute<bool>            IsWater   (NL_grid/domain_10m) := ='BBG/PerFunctie/'+BBG_jaar+'/IJsselmeer_Markermeer
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Afgesloten_zeearm
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Rijn_en_maas
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Randmeer
+																		|| BBG/PerFunctie/'+BBG_jaar+'/spaarbekkens
+																		|| BBG/PerFunctie/'+BBG_jaar+'/water_met_een_recreatieve_functie
+																		|| BBG/PerFunctie/'+BBG_jaar+'/water_met_delfstofwinningsfunctie
+																		|| BBG/PerFunctie/'+BBG_jaar+'/vloei__en_of_slibveld
+																		|| BBG/PerFunctie/'+BBG_jaar+'/overig_binnenwater
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Waddenzee_Eems_Dollard
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Oosterschelde
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Westerschelde
+																		|| BBG/PerFunctie/'+BBG_jaar+'/Noordzee';
+		attribute<bool>            IsForeign   (NL_grid/domain_10m) := ='BBG/PerFunctie/'+BBG_jaar+'/Buitenland';
+	}
+	
+	attribute<float32> Share_Buildings (NL_grid/domain) := sum(BAG/IsBuilding[uint32], NL_grid/domain_10m/grid_100m_rel)[float32] / 100f;
+	attribute<float32> Share_Infra     (NL_grid/domain) := sum(BBG/IsInfra[uint32] == BAG/IsBuilding[uint32] ? 0 : BBG/IsInfra[uint32], NL_grid/domain_10m/grid_100m_rel)[float32] / 100f;
+	attribute<float32> Share_Water     (NL_grid/domain) := sum(BBG/IsWater[uint32] == BAG/IsBuilding[uint32] ? 0 : BBG/IsWater[uint32], NL_grid/domain_10m/grid_100m_rel)[float32] / 100f;
+	attribute<float32> Share_Foreign   (NL_grid/domain) := sum(BBG/IsForeign[uint32], NL_grid/domain_10m/grid_100m_rel)[float32] / 100f;
+	attribute<float32> Share_Available (NL_grid/domain) := (1f - Share_Buildings - Share_Infra - Share_Water - Share_Foreign) < 0f ? 0f : (1f - Share_Buildings - Share_Infra - Share_Water - Share_Foreign) ;
+}

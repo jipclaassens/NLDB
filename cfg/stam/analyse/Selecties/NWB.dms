@@ -1,0 +1,43 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container NWB
+{
+	unit<uint32> Wegvak: Expr =
+		"Subset("
+			"   PointCol(BronData/NWB/wegvak/pointset/point) >= X_min"
+			"&& PointCol(BronData/NWB/wegvak/pointset/point) <= X_max"
+			"&& PointRow(BronData/NWB/wegvak/pointset/point) >= Y_min"
+			"&& PointRow(BronData/NWB/wegvak/pointset/point) <= Y_max"
+		")"
+	,	DialogType  = "Map"
+	,	DialogData  = "line"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/NWB/Wegvak.dbf'"
+	{
+		attribute<Brondata/NWB/wegvak> sequencenr: expr = "BronData/NWB/wegvak/pointset/SequenceNr[nr_OrgEntity]";
+		attribute<String>              WEGBEHSRT:  expr = "Brondata/NWB/wegvak/WEGBEHSRT[SequenceNr]";
+		attribute<String>              STT_NAAM:   expr = "Brondata/NWB/wegvak/STT_NAAM[SequenceNr]";
+		attribute<Geografie/geometries/rdc>  line(arc)
+		:	expr        = "Brondata/NWB/wegvak/lijn[sequencenr]"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/NWB/Wegvak.shp'"
+		{
+			parameter<color>  pencolor:      expr = "rgb(255,128,  0)", DialogType = "Pencolor",      isHidden = "True", DisableStorage = "True";
+			parameter<uint32> PenWidth:      expr ="2",                 DialogType = "PenWidth",      isHidden = "True", DisableStorage = "True";
+			parameter<m>      PenWorldWidth: expr = "value(4, m)",      DialogType = "PenWorldWidth", isHidden = "True", DisableStorage = "True";
+		}
+		unit<uint32> pointset
+		:	expr           = "Sequence2Points(line)"
+		,	DisableStorage = "True"
+		,	isHidden       = "True"
+		{
+			attribute<geometries/rdc> NewPoint: expr = "Point + point(float32(2),float32(-2),geometries/rdc)";
+		}
+	}
+}

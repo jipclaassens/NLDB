@@ -1,0 +1,164 @@
+unit<uint32> NWB  
+:	StorageName     = "%SourceDataDir%/NWB/NWB_20191023/wegvakken.shp"
+,	StorageType     = "gdal.vect"
+,	StorageReadOnly = "True"
+,	FreeData = "False" 
+,	SyncMode = "none"
+,	DialogType = "map"
+,	DialogData = "geometry"
+{
+	attribute<geometries/rdc>  geometry (arc);
+	attribute<string>          wegtype;
+	
+	unit<uint32> RoadPointSet := sequence2points(geometry)
+	, DialogData = "point"
+	, DialogType = "map"
+	, FreeData = "false"
+	{
+		attribute<float32> mean_speed_MorningRush := rjoin(SequenceNr, id(NWB), NWB/CongestionSpeed_MorningRush_perdate/mean);
+		attribute<float32> mean_flow_MorningRush  := rjoin(SequenceNr, id(NWB), NWB/CongestionFlow_MorningRush_perdate/mean);
+		attribute<float32> mean_speed_NoonRush    := rjoin(SequenceNr, id(NWB), NWB/CongestionSpeed_NoonRush_perdate/mean);
+		attribute<float32> mean_flow_NoonRush     := rjoin(SequenceNr, id(NWB), NWB/CongestionFlow_NoonRush_perdate/mean);
+	}
+	
+	///MorningRush
+	
+	container CongestionSpeed_MorningRush_perdate := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/MorningRush/name
+			, 'rjoin(id(NWB), Link_NWB_to_NDW/ArcID, Link_NWB_to_NDW/Avg_speed_MorningRush_perdate/'+NDW/Meetmomenten/datetime/MorningRush/name+')' 
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> sum           (NWB) := ='add('+AsItemList('MakeDefined('+NDW/Meetmomenten/datetime/MorningRush/name+'[float32],0f)')+')';
+		attribute<float32> mean          (NWB) := sum / Count_CongestionSpeedPerSegment_MorningRush/count;
+	}
+	container CongestionFlow_MorningRush_perdate := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/MorningRush/name
+			, 'rjoin(id(NWB), Link_NWB_to_NDW/ArcID, Link_NWB_to_NDW/Avg_flow_MorningRush_perdate/'+NDW/Meetmomenten/datetime/MorningRush/name+')' 
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> sum           (NWB) := ='add('+AsItemList('MakeDefined('+NDW/Meetmomenten/datetime/MorningRush/name+'[float32],0f)')+')';
+		attribute<float32> mean          (NWB) := sum / Count_CongestionFlowPerSegment_MorningRush/count;
+	}
+	
+	container Count_CongestionSpeedPerSegment_MorningRush := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/MorningRush/name
+			, 'IsDefined(CongestionSpeed_MorningRush_perdate/'+NDW/Meetmomenten/datetime/MorningRush/name+') ? 1 : 0'
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> count           (NWB) := = 'add('+AsItemList(NDW/Meetmomenten/datetime/MorningRush/name+'[float32]')+')';
+	}
+	
+	container Count_CongestionFlowPerSegment_MorningRush := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/MorningRush/name
+			, 'IsDefined(CongestionFlow_MorningRush_perdate/'+NDW/Meetmomenten/datetime/MorningRush/name+') ? 1 : 0'
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> count           (NWB) := = 'add('+AsItemList(NDW/Meetmomenten/datetime/MorningRush/name+'[float32]')+')';
+	}
+	
+	
+	
+	//////////////////NoonRush
+	
+	container CongestionSpeed_NoonRush_perdate := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/NoonRush/name
+			, 'rjoin(id(NWB), Link_NWB_to_NDW/ArcID, Link_NWB_to_NDW/Avg_speed_NoonRush_perdate/'+NDW/Meetmomenten/datetime/NoonRush/name+')' 
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> sum           (NWB) := ='add('+AsItemList('MakeDefined('+NDW/Meetmomenten/datetime/NoonRush/name+'[float32],0f)')+')';
+		attribute<float32> mean          (NWB) := sum / Count_CongestionSpeedPerSegment_NoonRush/count;
+	}
+	
+	container CongestionFlow_NoonRush_perdate := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/NoonRush/name
+			, 'rjoin(id(NWB), Link_NWB_to_NDW/ArcID, Link_NWB_to_NDW/Avg_flow_NoonRush_perdate/'+NDW/Meetmomenten/datetime/NoonRush/name+')' 
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> sum           (NWB) := ='add('+AsItemList('MakeDefined('+NDW/Meetmomenten/datetime/NoonRush/name+'[float32],0f)')+')';
+		attribute<float32> mean          (NWB) := sum / Count_CongestionFlowPerSegment_NoonRush/count;
+	}
+	
+	container Count_CongestionSpeedPerSegment_NoonRush := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/NoonRush/name
+			, 'IsDefined(CongestionSpeed_NoonRush_perdate/'+NDW/Meetmomenten/datetime/NoonRush/name+') ? 1 : 0'
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> count           (NWB) := = 'add('+AsItemList(NDW/Meetmomenten/datetime/NoonRush/name+'[float32]')+')';
+	}
+
+	container Count_CongestionFlowPerSegment_NoonRush := 
+		for_each_nedv(
+			NDW/Meetmomenten/datetime/NoonRush/name
+			, 'IsDefined(CongestionFlow_NoonRush_perdate/'+NDW/Meetmomenten/datetime/NoonRush/name+') ? 1 : 0'
+			, NWB
+			, uint32
+		), FreeData = "false"
+	{
+		attribute<float32> count           (NWB) := = 'add('+AsItemList(NDW/Meetmomenten/datetime/NoonRush/name+'[float32]')+')';
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+	container Link_NWB_to_NDW := connect_info(geometry, NDW/Telpunten/geometry_rd)
+	, FreeData = "false"
+	{
+		container Avg_speed_MorningRush_perdate := 
+			for_each_nedv(
+				NDW/Meetmomenten/datetime/MorningRush/name
+				, 'NDW/Telpunten/Avg_speed_MorningRush_perdate/'+NDW/Meetmomenten/datetime/MorningRush/name
+				, NDW/Telpunten
+				, uint32
+			);
+		container Avg_flow_MorningRush_perdate := 
+			for_each_nedv(
+				NDW/Meetmomenten/datetime/MorningRush/name
+				, 'NDW/Telpunten/Avg_flow_MorningRush_perdate/'+NDW/Meetmomenten/datetime/MorningRush/name
+				, NDW/Telpunten
+				, uint32
+			);
+		container Avg_speed_NoonRush_perdate := 
+			for_each_nedv(
+				NDW/Meetmomenten/datetime/NoonRush/name
+				, 'NDW/Telpunten/Avg_speed_NoonRush_perdate/'+NDW/Meetmomenten/datetime/NoonRush/name
+				, NDW/Telpunten
+				, uint32
+			);
+		container Avg_flow_NoonRush_perdate := 
+			for_each_nedv(
+				NDW/Meetmomenten/datetime/NoonRush/name
+				, 'NDW/Telpunten/Avg_flow_NoonRush_perdate/'+NDW/Meetmomenten/datetime/NoonRush/name
+				, NDW/Telpunten
+				, uint32
+			);
+	}
+}

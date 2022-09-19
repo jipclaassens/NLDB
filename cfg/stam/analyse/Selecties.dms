@@ -1,0 +1,182 @@
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                                                                                    //
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container selecties: using = "eenheden"
+{
+	parameter<m> selectie_afstand:  = 500[m];
+	
+	container NL        := MaakSelectie('NL' , 10000[m], 280000[m], 300000[m], 625000[m]);
+	// container ZuidAs    := MaakSelectie('ZuidAs' ,value(118000, geometries/rdc), value(121500,geometries/rdc), value(482000, geometries/rdc), value(484500, geometries/rdc));
+	
+	container ParkStadGemeentes
+	{
+		unit<uint32> gemeentes := 
+			Subset(
+				   Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Brunssum'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Heerlen'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Kerkrade'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Landgraaf'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Nuth'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Onderbanken'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Simpelveld'
+				|| Brondata/CBS/regios/gemeenten/gem_src/j2017/Label == 'Voerendaal'
+			)
+		,	DialogData = "vlak"
+		,	DialogType = "Map"
+		{
+			attribute<geometries/rdc> vlak (polygon):= /Brondata/CBS/gemeente/vlak[nr_OrgEntity]
+			{
+				parameter<color> BrushColor: DialogType = "BrushColor", Expr = "rgb(255,255,255)";
+			}
+			attribute<string> label := /Brondata/CBS/gemeente/label[nr_OrgEntity], DialogType = "LabelText"
+			{
+				parameter<float32> LabelSize: DialogType = "LabelSize", expr = "float32(32)";
+			}
+		}
+		container gemeente_shadow := Rekenschemas/shadow/all(gemeentes, gemeentes/vlak,20,2,Brondata/CBS/NL/vlak/r,Brondata/CBS/NL/vlak/g,Brondata/CBS/NL/vlak/b);
+		
+		container BAG
+		{
+			attribute<gemeentes> gemeentes_vlak_rel (/Brondata/BAG/pand)  := point_in_polygon(/Brondata/BAG/pand/locatie, gemeentes/vlak);
+			unit<uint32> pand :=
+				subset (
+					IsDefined(gemeentes_vlak_rel)
+				)
+			,	DialogType = "Map"
+			,	DialogData = "vlak"
+			{
+				attribute<geometries/rdc> vlak(polygon) := /Brondata/BAG/pand/vlak[nr_OrgEntity];
+				attribute<geometries/rdc> locatie := /Brondata/BAG/pand/locatie[nr_OrgEntity];
+				
+				attribute<string> identificatie     := /Brondata/BAG/pand/id[nr_OrgEntity];
+				attribute<string> id                := /Brondata/BAG/pand/id[nr_OrgEntity];
+				attribute<uint32> aantal_vbo        := /Brondata/BAG/pand/aantal_vbo[nr_OrgEntity];
+			}
+		}
+	}
+	
+	
+	
+
+
+	
+	Template MaakSelectie
+	{
+		// begin case parameters
+		parameter<string> gebiedsnaam;
+		parameter<m> X_min;
+		parameter<m> X_max;
+		parameter<m> Y_min;
+		parameter<m> Y_max;
+		// einde case parameters
+			
+		parameter<uint32> UpdateBAG:=
+			  uint32(arc_length(   BAG/pand/geometry[0],float32))
+			+ uint32(              BAG/pand/pand_id[0])
+			+ uint32(              BAG/pand/bouwjaar_int[0])
+
+			+ uint32(PointRow(     BAG/verblijfs_object/geometry[0]))
+			+ uint32(              BAG/verblijfs_object/verblijfs_object_id[0])
+			+ uint32(              BAG/verblijfs_object/oppervlakte[0])
+			+ uint32(              BAG/verblijfs_object/is_woon[0])
+			+ uint32(              BAG/verblijfs_object/is_winkel[0])
+			+ uint32(              BAG/verblijfs_object/is_logies[0])
+			+ uint32(              BAG/verblijfs_object/is_gezondheidszorg[0])
+			+ uint32(              BAG/verblijfs_object/is_kantoor[0])
+			+ uint32(              BAG/verblijfs_object/is_bijeenkomst[0])
+			+ uint32(              BAG/verblijfs_object/is_onderwijs[0])
+			+ uint32(              BAG/verblijfs_object/is_industrie[0])
+			+ uint32(              BAG/verblijfs_object/is_overige_gebruiks[0])
+			+ uint32(              BAG/verblijfs_object/is_sport[0])
+			+ uint32(              BAG/verblijfs_object/is_cel[0])
+			+ uint32(              BAG/verblijfs_object/straatnaam[0])
+			+ uint32(              BAG/verblijfs_object/huisnummer[0])
+			+ uint32(              BAG/verblijfs_object/huisletter[0])
+			+ uint32(              BAG/verblijfs_object/toevoeging[0])
+			+ uint32(              BAG/verblijfs_object/postcode[0])
+			+ uint32(              BAG/verblijfs_object/woonplaats[0])
+			+ uint32(              BAG/verblijfs_object/gemeente[0])
+			+ uint32(arc_length(   BAG/woonplaats/geometry[0],float32))
+			+ uint32(              BAG/woonplaats/label[0])
+			;
+
+		parameter<uint32> UpdateBBG :=
+			    uint32(arc_length( BBG/bbg2012/geometry[0], float32)) 
+			  + uint32(            BBG/bbg2012/type[0]) 
+			  // + uint32(            BBG/bbg2012/omschrijving[0])
+			  ;
+			
+		// parameter<uint32> UpdateBrt := 
+			// "  uint32(arc_length(BRT/gebouw/vlak[0],float32))  + value(BRT/gebouw/hoogteklas[0],uint32)"
+			// "+ uint32(arc_length(BRT/terrein/vlak[0],float32)) + value(BRT/terrein/type[0],uint32) + value(BRT/terrein/hoogteniveau[0],uint32)"
+			// "+ uint32(arc_length(BRT/waterdeel_vlak/vlak[0],float32)) + value(BRT/waterdeel_vlak/hoogteniveau[0],uint32)"
+			// "+ uint32(arc_length(BRT/wegdeel/vlak[0],float32)) + value(BRT/wegdeel/type[0],uint32) + value(BRT/wegdeel/hoogteniveau[0],uint32)"
+			// "+ uint32(arc_length(BRT/wegdeel_lijn/line[0],float32)) + value(BRT/wegdeel_lijn/hoogteniveau[0],uint32)"
+			// "+ uint32(arc_length(BRT/wegdeel_hartlijn/line[0],float32)) + value(BRT/wegdeel_hartlijn/hoogteniveau[0],uint32)"
+			// "+ uint32(arc_length(BRT/waterdeel_lijn/lijn[0],float32)) + value(BRT/waterdeel_lijn/hoogteniveau[0],uint32)"
+			// "+ uint32(arc_length(BRT/spoorbaandeel_lijn/lijn[0],float32)) + value(BRT/spoorbaandeel_lijn/hoogteniveau[0],uint32)";
+			
+		// parameter<uint32> UpdateOSM := 
+			  // uint32(OSM/weg/road/roadtype[0]) + uint32(arc_length(OSM/weg/road/lijn[0],float32)) + uint32(OSM/weg/road/name[0]) + OSM/weg/road/osm_id[0];
+			
+		// parameter<uint32> UpdateOV9292 :=
+			// "  uint32(PointRow(ov9292/ov_haltes/locatie[0])) + uint32(ov9292/ov_haltes/naam[0]) + uint32(ov9292/ov_haltes/type[0])";
+			
+		// parameter<uint32> UpdateOverig :=
+			// "  value(selectiegebied/polygon/id[0],  uint32)   + uint32(arc_length(selectiegebied/polygon/boundary[0], float32))"
+			// "+ uint32(Overig/cbs_buurt/selection/Label[0])    "
+			// "+ uint32(arc_length(Overig/cbs_buurt/selection/vlak[0],float32))"
+			// "+ uint32(Overig/cbs_gemeente/selection/Label[0])    + uint32(arc_length(Overig/cbs_gemeente/selection/vlak[0],float32))"
+			// "+ uint32(arc_length(Overig/bebouwd_gebied_2003/vlak[0],float32))";
+			
+		
+		parameter<uint32> UpdateAll := 
+			// "UpdateBag + UpdateBrt + UpdateOsm + UpdateOV9292 + UpdateOverig";  
+			UpdateBag ;  
+		
+
+		container selectiegebied
+		{
+			unit<uint32> polygon := range(uint32,0,1)
+			,	DialogData = "geometry"
+			,	DialogData = "Map"
+			,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/selectie.dbf'"
+			{
+				attribute<geometries/rdc>     geometry (polygon) := points2sequence(selectiegebied/pointset/point, selectiegebied/pointset/Sequencenr, selectiegebied/pointset/Ordinal)
+				,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/selectie.shp'";
+				
+				attribute<.>                  id                 := id(.);
+				attribute<geometries/rdc>     TopLeft            := const(point(X_min, Y_min, geometries/rdc),.,geometries/rdc), DisableStorage = "True";
+				attribute<geometries/rdc>     TopRight           := const(point(X_max, Y_min, geometries/rdc),.,geometries/rdc), DisableStorage = "True";
+				attribute<geometries/rdc>     BottomRight        := const(point(X_max, Y_max, geometries/rdc),.,geometries/rdc), DisableStorage = "True";
+				attribute<geometries/rdc>     BottomLeft         := const(point(X_min, Y_max, geometries/rdc),.,geometries/rdc), DisableStorage = "True";
+			}
+			
+			unit<uint32> pointset := union_unit(polygon,polygon,polygon,polygon,polygon)
+			{
+				attribute<geometries/rdc>   point       := union_data(.,polygon/TopLeft, polygon/TopRight, polygon/BottomRight, polygon/BottomLeft, polygon/TopLeft);
+				attribute<polygon>          Sequencenr  := const(0, pointset, polygon);
+				attribute<uint32>           Ordinal     := id(.);
+			}
+		}
+		
+		//#include<NWB.dms>
+		#include<BAG.dms>
+		#include<BBG.dms>
+		#include<BRT.dms>
+		// #include<OSM.dms>
+		// #include<overig.dms>
+	}
+	// #include<BAG_poly.dms>
+	// #include<BGT_tile.dms>
+}

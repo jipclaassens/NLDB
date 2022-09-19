@@ -1,0 +1,519 @@
+	container BBG
+	{
+		attribute<typeringen/bbg> BBG_1996 (NL_grid/domain_25m)
+		:	StorageName     = "%SourceDataDir%/CBS/BestandBodemGebruik/BBG_1996_25m.tif"
+		,	StorageType     = "gdal.grid"
+		,	StorageReadOnly = "True"
+		,	FreeData = "False";
+		attribute<typeringen/bbg> BBG_2015 (NL_grid/domain_25m)
+		:	StorageName     = "%SourceDataDir%/CBS/BestandBodemGebruik/BBG_2015_25m.tif"
+		,	StorageType     = "gdal.grid"
+		,	StorageReadOnly = "True"
+		,	FreeData = "False";
+		attribute<typeringen/bbg> BBG_1996_ek (NL_grid/domain_25m) := typeringen/BBG/bbg_ek[BBG_1996], StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_1996_ek.tif";
+		attribute<typeringen/bbg> BBG_2015_ek (NL_grid/domain_25m) := typeringen/BBG/bbg_ek[BBG_2015], StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2015_ek.tif";
+		
+		container BBG_1996_perprov := 
+			for_each_nedva(
+				Brondata/CBS/Regios/provincies/src_2019/name
+				, 'Brondata/CBS/Regios/provincies/src_2019/grid_25m == '+string(id(Brondata/CBS/Regios/provincies/src_2019))+' ? typeringen/BBG/bbg_ek[BBG_1996] : (0/0)[typeringen/bbg]'
+				, NL_grid/domain_25m
+				, typeringen/bbg
+				, '%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/'+Brondata/CBS/Regios/provincies/src_2019/name+'_1996.tif'
+			);
+		container BBG_2015_perprov := 
+			for_each_nedva(
+				Brondata/CBS/Regios/provincies/src_2019/name
+				, 'Brondata/CBS/Regios/provincies/src_2019/grid_25m == '+string(id(Brondata/CBS/Regios/provincies/src_2019))+' ? typeringen/BBG/bbg_ek[BBG_2015] : (0/0)[typeringen/bbg]'
+				, NL_grid/domain_25m
+				, typeringen/bbg
+				, '%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/'+Brondata/CBS/Regios/provincies/src_2019/name+'_2015.tif'
+			);
+		
+		
+	
+		container BBG1996_2015
+		:	StorageName     = "%SourceDataDir%/CBS/BestandBodemGebruik/MutatiebestandBBG1996-2015_GEM2018.gdb"
+		,	StorageType     = "gdal.vect"
+		,	StorageReadOnly = "True"
+		//,	SqlString       = "SELECT * FROM BBG1996_2015_GEM2018 WHERE GEM2018 = 344"//for debugging, voorbeeld Utrecht
+		,	Source          = "Y:\ontwdata\PBLbase\DL\0_Nieuw_binnen\2019\BBGmutatiebestand_1996-2015\Mutatiebestand1996_2015\MutatiebestandBBG1996-2015.gdb toevoegen ligging in gemeente 2018 tbv debugging"
+							  "containeritem /Geography/RegioIndelingen/Gemeente2018 --> Gemeentegrenzen_2018_A1_PBL_RES.gdb"
+		,	url             = "https://www.cbs.nl/nl-nl/achtergrond/2012/44/mutatiereeks-bodemgebruik-1996-2012"
+		{
+			unit<uint32> pol
+			{
+				attribute<geometries/rdc> Geometry (poly): FreeData = "false";
+				attribute<uint8>                    wordt1996;
+				attribute<uint8>                    wordt2000;
+				attribute<uint8>                    wordt2003;
+				attribute<uint8>                    wordt2006;
+				attribute<uint8>                    wordt2008;
+				attribute<uint8>                    wordt2010;
+				attribute<uint8>                    wordt2012;
+				attribute<uint8>                    wordt2015;
+			}
+		}
+	
+		unit<uint32> MakeBBG_1996_2015 := BBG1996_2015/pol
+		,  StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/BBG_1996_2015.fss"
+		,  DialogType = "Map"
+		,  DialogData = "geometry_rd"
+		{
+			attribute<geometries/rdc>           geometry_rd (polygon)                    := geometry;
+			
+			attribute<.>                        grid_100m     (NL_grid/domain)           := poly2grid(geometry_rd, NL_grid/domain);
+			attribute<.>                        grid_25m      (NL_grid/domain_25m)       := poly2grid(geometry_rd, NL_grid/domain_25m);
+			attribute<.>                        grid_10m      (NL_grid/domain_10m)       := poly2grid(geometry_rd, NL_grid/domain_10m);
+			
+			attribute<uint32>                   id                                       := id(.);
+			attribute<typeringen/bbg>           bbg1996                                  := wordt1996;
+			attribute<typeringen/bbg>           bbg2000                                  := wordt2000;
+			// attribute<uint8>           bbg1996_src                                  := wordt1996;
+			attribute<typeringen/bbg>           bbg2003                                  := wordt2003;
+			attribute<typeringen/bbg>           bbg2006                                  := wordt2006;
+			attribute<typeringen/bbg>           bbg2008                                  := wordt2008;
+			attribute<typeringen/bbg>           bbg2010                                  := wordt2010;
+			attribute<typeringen/bbg>           bbg2012                                  := wordt2012;
+			attribute<typeringen/bbg>           bbg2015                                  := wordt2015;
+			// attribute<uint8>           bbg2015_src                                  := wordt2015;
+			
+			attribute<typeringen/bbg>           gg1996_src_rel                           := rlookup(bbg1996, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2000_src_rel                           := rlookup(bbg2000, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2003_src_rel                           := rlookup(bbg2003, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2006_src_rel                           := rlookup(bbg2006, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2008_src_rel                           := rlookup(bbg2008, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2010_src_rel                           := rlookup(bbg2010, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2012_src_rel                           := rlookup(bbg2012, typeringen/bbg/bbg_ek);
+			attribute<typeringen/bbg>           gg2015_src_rel                           := rlookup(bbg2015, typeringen/bbg/bbg_ek);
+	
+			attribute<typeringen/bbg>           bbg1996_10m   (NL_grid/domain_10m)       := gg1996_src_rel[grid_10m];
+			attribute<typeringen/bbg>           bbg2000_10m   (NL_grid/domain_10m)       := gg2000_src_rel[grid_10m];
+			// attribute<uint8>           bbg1996_10m_src   (NL_grid/domain_10m)   := bbg1996_src[grid_10m];
+			attribute<typeringen/bbg>           bbg2003_10m   (NL_grid/domain_10m)       := gg2003_src_rel[grid_10m];
+			attribute<typeringen/bbg>           bbg2006_10m   (NL_grid/domain_10m)       := gg2006_src_rel[grid_10m];
+			attribute<typeringen/bbg>           bbg2008_10m   (NL_grid/domain_10m)       := gg2008_src_rel[grid_10m];
+			attribute<typeringen/bbg>           bbg2010_10m   (NL_grid/domain_10m)       := gg2010_src_rel[grid_10m];
+			attribute<typeringen/bbg>           bbg2012_10m   (NL_grid/domain_10m)       := gg2012_src_rel[grid_10m];
+			attribute<typeringen/bbg>           bbg2015_10m   (NL_grid/domain_10m)       := gg2015_src_rel[grid_10m];
+			// attribute<uint8>           bbg2015_10m_src   (NL_grid/domain_10m)  := bbg2015_src[grid_10m];
+			
+			// attribute<typeringen/bbg>           bbg2012_100m_src  (NL_grid/domain)       := bbg2012[grid_100m];
+			attribute<typeringen/bbg>           bbg1996_100m  (NL_grid/domain)           := gg1996_src_rel[grid_100m];
+			attribute<typeringen/bbg>           bbg2012_100m  (NL_grid/domain)           := gg2012_src_rel[grid_100m];
+			attribute<typeringen/bbg>           bbg1996_25m   (NL_grid/domain_25m)       := gg1996_src_rel[grid_25m];
+			attribute<typeringen/bbg>           bbg2012_25m   (NL_grid/domain_25m)       := gg2012_src_rel[grid_25m];
+			// attribute<typeringen/bbg>           bbg2015_100m_src  (NL_grid/domain)       := bbg2015[grid_100m];
+			attribute<typeringen/bbg>           bbg2015_100m  (NL_grid/domain)           := gg2015_src_rel[grid_100m];
+			attribute<typeringen/bbg>           bbg2015_25m   (NL_grid/domain_25m)       := gg2015_src_rel[grid_25m];
+			
+			attribute<typeringen/bbg/gg_lusdemo> bbg2015_10m_lusdemo  (NL_grid/domain_10m)       := MakeDefined(typeringen/bbg/gg_lusdemo_rel[bbg2015_10m], typeringen/bbg/gg_lusdemo/v/exterior);
+			attribute<typeringen/bbg/gg_lusdemo> bbg2015_100m_lusdemo  (NL_grid/domain)       := MakeDefined(typeringen/bbg/gg_lusdemo_rel[bbg2015_100m], typeringen/bbg/gg_lusdemo/v/exterior);
+			attribute<typeringen/bbg/gg_10k>    bbg2012_100m_10k  (NL_grid/domain)       := typeringen/bbg/gg_10k_rel[bbg2012_100m];
+			attribute<typeringen/bbg/gg_10k>    bbg2012_10m_10k   (NL_grid/domain_10m)   := typeringen/bbg/gg_10k_rel[bbg2012_10m];
+			attribute<typeringen/bbg/gg_3K>     bbg2012_100m_3k   (NL_grid/domain)       := typeringen/bbg/gg_10K/gg_3K_rel[bbg2012_100m_10k];
+			attribute<typeringen/bbg/gg_10k>    bbg2015_100m_10k  (NL_grid/domain)       := typeringen/bbg/gg_10k_rel[bbg2015_100m];
+			attribute<typeringen/bbg/gg_10k>    bbg2015_10m_10k   (NL_grid/domain_10m)   := typeringen/bbg/gg_10k_rel[bbg2015_10m];
+			attribute<typeringen/bbg/gg_3K>     bbg2015_100m_3k   (NL_grid/domain)       := typeringen/bbg/gg_10K/gg_3K_rel[bbg2015_100m_10k];
+			
+			// attribute<uint32>	                bebouwd_gebied_2012 (NL_grid/domain)     := bbg2012_100m_src[uint32] == 20[uint32] || bbg2012_100m_src[uint32] == 21[uint32] || bbg2012_100m_src[uint32] == 22[uint32] || bbg2012_100m_src[uint32] == 23[uint32] ? 1[uint32] : 0[uint32];
+			// attribute<uint32>	                bebouwd_gebied_2015 (NL_grid/domain)     := bbg2015_100m_src[uint32] == 20[uint32] || bbg2015_100m_src[uint32] == 21[uint32] || bbg2015_100m_src[uint32] == 22[uint32] || bbg2015_100m_src[uint32] == 23[uint32] ? 1[uint32] : 0[uint32];
+		
+			container LU_continuous := 
+				for_each_nedv(
+					typeringen/bbg/gg_10k/name
+					, 'sum(bbg2015_10m_10k == typeringen/bbg/gg_10k/v/'+typeringen/bbg/gg_10k/name+' ? 1 : 0, /NL_grid/domain_10m/grid_100m_rel)[Ha] / 100f'
+					, NL_grid/domain
+					, Ha
+				)
+			{
+				attribute<Ha> Total  (NL_grid/domain) := ='add_list('+asItemList(typeringen/bbg/gg_10k/name)+')';
+				attribute<Ha> OSA   (NL_grid/domain) := Total == 0[Ha] ? 1[Ha] : 0[Ha];
+			}
+			
+		}
+		
+		unit<uint32> BBG_1996_2015
+		:  StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/BBG_1996_2015.fss"
+		,  DialogType = "Map"
+		,  DialogData = "geometry_rd"
+		,  StorageReadOnly = "True"
+		,  FreeData = "False"
+		{
+			attribute<geometries/rdc>           geometry_rd (polygon);
+			attribute<m2>                       area     := area(geometry_rd, m2);
+			 
+			attribute<.>                        grid_100m     (NL_grid/domain);
+			attribute<.>                        grid_25m      (NL_grid/domain_25m);
+			attribute<.>                        grid_10m      (NL_grid/domain_10m);
+
+			attribute<typeringen/bbg>           bbg2012;
+			attribute<typeringen/bbg>           bbg2015;
+			attribute<typeringen/bbg>           gg2000_src_rel;
+			attribute<typeringen/bbg>           gg2012_src_rel;
+			attribute<typeringen/bbg>           gg2015_src_rel;
+			
+			attribute<typeringen/bbg>           bbg2012_100m_src  (NL_grid/domain);
+			attribute<typeringen/bbg>           bbg2015_100m_src  (NL_grid/domain);
+			
+			attribute<typeringen/bbg>           bbg1996_10m   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2000_10m   (NL_grid/domain_10m);
+			// attribute<uint8>           bbg1996_10m_src   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2003_10m   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2006_10m   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2008_10m   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2010_10m   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2012_10m   (NL_grid/domain_10m);
+			attribute<typeringen/bbg>           bbg2015_10m   (NL_grid/domain_10m);
+			// attribute<uint8>           bbg2015_10m_src   (NL_grid/domain_10m);
+			
+			attribute<typeringen/bbg>           bbg1996_100m  (NL_grid/domain);
+			attribute<typeringen/bbg>           bbg1996_25m   (NL_grid/domain_25m);
+			attribute<typeringen/bbg>           bbg2012_100m  (NL_grid/domain);
+			attribute<typeringen/bbg>           bbg2012_25m   (NL_grid/domain_25m);
+			attribute<typeringen/bbg>           bbg2015_100m  (NL_grid/domain) ;
+			attribute<typeringen/bbg>           bbg2015_25m   (NL_grid/domain_25m);
+			
+			attribute<typeringen/bbg/gg_10k>    bbg2012_100m_10k  (NL_grid/domain);
+			attribute<typeringen/bbg/gg_10k>    bbg2012_10m_10k   (NL_grid/domain_10m);
+			attribute<typeringen/bbg/gg_3K>     bbg2012_100m_3k   (NL_grid/domain);
+			attribute<typeringen/bbg/gg_10k>    bbg2015_100m_10k  (NL_grid/domain);
+			attribute<typeringen/bbg/gg_10k>    bbg2015_10m_10k   (NL_grid/domain_10m);
+			attribute<typeringen/bbg/gg_3K>     bbg2015_100m_3k   (NL_grid/domain)  ;
+			
+			attribute<typeringen/bbg/gg_lusdemo> bbg2015_10m_lusdemo  (NL_grid/domain_10m);
+			attribute<typeringen/bbg/gg_lusdemo> bbg2015_10m_lusdemo_edit (NL_grid/domain_10m) := Impl_LUSdemo/bbg2015_10m_lusdemo_edit;
+			attribute<typeringen/bbg/gg_lusdemo> bbg2015_100m_lusdemo   (NL_grid/domain);
+			
+			attribute<uint32>	                bebouwd_gebied_2012 (NL_grid/domain);
+			attribute<uint32>                   bebouwd_gebied_2015 (NL_grid/domain);
+			
+			container PerFunctie
+			{
+				container J1996 := 
+					for_each_ndva(
+						typeringen/bbg/name
+						, NL_grid/domain_10m
+						, bool
+						, '%ProjDir%/Data/UnlinkedData/BBG/bbg1996_'+typeringen/bbg/name+'.fss'
+				);
+				container J2015 := 
+					for_each_ndva(
+						typeringen/bbg/name
+						, NL_grid/domain_10m
+						, bool
+						, '%ProjDir%/Data/UnlinkedData/BBG/bbg2015_'+typeringen/bbg/name+'.fss'
+				);
+			}
+			
+			container MakeLUSdemo_fracties_100m := 
+				for_each_nedva(
+					typeringen/bbg/gg_lusdemo/name
+					, 'sum(BBG_1996_2015/bbg2015_10m_lusdemo_edit == typeringen/bbg/gg_lusdemo/V/'+typeringen/bbg/gg_lusdemo/name+' ? NL_grid/domain_10m/NrHaPerCell : 0[ha], NL_grid/domain_10m/grid_100m_rel)'
+					, NL_grid/domain
+					, ha
+					, '%LocalDataDir%/LUS_demo/Input/bbg2015_LUSdemo_100m_'+typeringen/bbg/gg_lusdemo/name+'.tif'
+				);
+			container MakeLUSdemo_fracties_500m := 
+				for_each_nedva(
+					typeringen/bbg/gg_lusdemo/name
+					, 'sum(BBG_1996_2015/bbg2015_10m_lusdemo_edit == typeringen/bbg/gg_lusdemo/V/'+typeringen/bbg/gg_lusdemo/name+' ? NL_grid/domain_10m/NrHaPerCell : 0[Ha], NL_grid/domain_10m/grid_500m_rel)'
+					, NL_grid/domain_500m
+					, ha
+					, '%LocalDataDir%/LUS_demo/Input/bbg2015_LUSdemo_500m_'+typeringen/bbg/gg_lusdemo/name+'.tif'
+				);
+			  
+			 container Impl_LUSdemo
+			 {
+			 	attribute<float32> Read_Asci_Water     (NL_grid/domain_500m) : StorageName = "C:/GeoDMS/ProjDir/Archief/lus_demo/data/Current_situation/ggBS_2010/lu2010_lnr8.asc";
+			 	attribute<float32> Read_Asci_Water_10m (NL_grid/domain_10m)  := MakeDefined(Read_Asci_Water[NL_grid/domain_10m/grid_500m_rel], 25f);
+				
+				attribute<int16>    cols (NL_grid/domain_10m)            := pointcol(id(NL_grid/domain_10m));
+				attribute<int16>    rows (NL_grid/domain_10m)            := pointrow(id(NL_grid/domain_10m));
+				attribute<bool>     IsWaterButShouldbeExt (NL_grid/domain_10m) := cols <=  1000[int16] && rows >= 24350[int16];
+				attribute<bool>     IsExtButShouldbeWater (NL_grid/domain_10m) := cols >= 26450[int16] && rows <= 2949[int16];
+				
+				attribute<typeringen/bbg/gg_lusdemo> bbg2015_10m_lusdemo_edit (NL_grid/domain_10m) := 
+						(bbg2015_10m_lusdemo == typeringen/bbg/gg_lusdemo/v/exterior && Impl_LUSdemo/Read_Asci_Water_10m == 25f && !IsWaterButShouldbeExt)
+						|| IsExtButShouldbeWater
+							? typeringen/bbg/gg_lusdemo/v/water 
+							: IsWaterButShouldbeExt
+								? typeringen/bbg/gg_lusdemo/v/exterior 
+								: bbg2015_10m_lusdemo;
+				
+ 			 }
+				
+				
+			container MakePerFunctie := 
+				for_each_ne(
+					typeringen/bbg/name
+					, 'MakePerFunctieT('+quote(typeringen/bbg/name)+')'
+				)
+			{
+				parameter<String> Generate_1996 := 'Ready',
+					ExplicitSuppliers = "=AsList('MakePerFunctie/'+typeringen/bbg/name+'/PerJaar/Y1996',';')";
+				parameter<String> Generate_2015 := 'Ready',
+					ExplicitSuppliers = "=AsList('MakePerFunctie/'+typeringen/bbg/name+'/PerJaar/Y2015',';')";
+			}
+			
+			template MakePerFunctieT
+			{
+				// template parameters
+				parameter<string> Name;
+				// end template parameters
+
+				container PerJaar :=
+					for_each_nedva(
+						typeringen/BBG/BBG_jaren/name
+						,'BBG_1996_2015/bbg'+string(typeringen/BBG/BBG_jaren/values)+'_10m == typeringen/bbg/V/'+Name+' ? IsDefined(BBG_1996_2015/bbg'+string(typeringen/BBG/BBG_jaren/values)+'_10m) : FALSE'
+						, NL_grid/domain_10m
+						, bool
+						, '%ProjDir%/Data/UnlinkedData/BBG/bbg'+string(typeringen/BBG/BBG_jaren/values)+'_'+Name+'.fss'
+					);
+					
+				unit<uint32> poly_2015 := ='subset(BBG_1996_2015/gg2015_src_rel == typeringen/bbg/V/'+Name+')'
+				, StorageName = "='%LocalDataDir%/NLDB/BBG/bbg_2015_'+Name+'.fss'"
+				{
+					attribute<geometries/rdc> geometry (poly) := BBG_1996_2015/geometry_rd[nr_OrgEntity];
+				}
+			}
+			
+		}
+		
+		container Tijdreeks_behoudrandvoorwaarden : FreeData = "False"
+		, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/BBG_Tijdreeks_100m.fss"
+		// , StorageReadOnly = "True"
+		{
+			attribute<typeringen/bbg>           bbg1996_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg1996_10m; //, DisableStorage = "True";
+			attribute<typeringen/bbg>           bbg2000_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2000_10m; //, DisableStorage = "True";
+			attribute<typeringen/bbg>           bbg2003_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2003_10m; //, DisableStorage = "True";
+			attribute<typeringen/bbg>           bbg2006_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2006_10m; //, DisableStorage = "True";
+			attribute<typeringen/bbg>           bbg2008_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2008_10m; //, DisableStorage = "True";
+			attribute<typeringen/bbg>           bbg2010_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2010_10m; //, DisableStorage = "True";
+			attribute<typeringen/bbg>           bbg2012_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2012_10m; //, DisableStorage = "True"; 
+			attribute<typeringen/bbg>           bbg2015_10m      (NL_grid/domain_10m) := BBG_1996_2015/bbg2015_10m; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2015_10m.tif";
+		
+			attribute<typeringen/bbg>           bbg1996_25m      (NL_grid/domain_25m) := Make25mgrids/y1996/Result_discrete, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_1996_25m.tif";
+			attribute<typeringen/bbg>           bbg2000_25m      (NL_grid/domain_25m) := Make25mgrids/y2000/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2000_25m.tif";
+			attribute<typeringen/bbg>           bbg2003_25m      (NL_grid/domain_25m) := Make25mgrids/y2003/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2003_25m.tif";
+			attribute<typeringen/bbg>           bbg2006_25m      (NL_grid/domain_25m) := Make25mgrids/y2006/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2006_25m.tif";
+			attribute<typeringen/bbg>           bbg2008_25m      (NL_grid/domain_25m) := Make25mgrids/y2008/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2008_25m.tif";
+			attribute<typeringen/bbg>           bbg2010_25m      (NL_grid/domain_25m) := Make25mgrids/y2010/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2010_25m.tif";
+			attribute<typeringen/bbg>           bbg2012_25m      (NL_grid/domain_25m) := Make25mgrids/y2012/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2012_25m.tif";
+			attribute<typeringen/bbg>           bbg2015_25m      (NL_grid/domain_25m) := Make25mgrids/y2015/Result_discrete, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2015_25m.tif";
+			
+			attribute<typeringen/bbg>           bbg1996_100m     (NL_grid/domain) := Make100mgrids/y1996/Result_discrete, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_1996_100m.tif"; // 
+			attribute<typeringen/bbg>           bbg2000_100m     (NL_grid/domain) := Make100mgrids/y2000/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2000_100m.tif";
+			attribute<typeringen/bbg>           bbg2003_100m     (NL_grid/domain) := Make100mgrids/y2003/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2003_100m.tif";
+			attribute<typeringen/bbg>           bbg2006_100m     (NL_grid/domain) := Make100mgrids/y2006/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2006_100m.tif";
+			attribute<typeringen/bbg>           bbg2008_100m     (NL_grid/domain) := Make100mgrids/y2008/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2008_100m.tif";
+			attribute<typeringen/bbg>           bbg2010_100m     (NL_grid/domain) := Make100mgrids/y2010/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2010_100m.tif";
+			attribute<typeringen/bbg>           bbg2012_100m     (NL_grid/domain) := Make100mgrids/y2012/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2012_100m.tif";
+			attribute<typeringen/bbg>           bbg2015_100m     (NL_grid/domain) := Make100mgrids/y2015/Result_discrete; //, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2015_100m.tif";
+			
+			// attribute<uint8>           bbg1996_10m_src      (NL_grid/domain_10m) := BBG_1996_2015/bbg1996_10m_src;
+			// attribute<uint8>           bbg2015_10m_src      (NL_grid/domain_10m) := BBG_1996_2015/bbg2015_10m_src;
+			// attribute<uint8>           bbg1996_100m_src     (NL_grid/domain)     := Make100mgrids/y1996/Result_discrete, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_1996_100m.tif";
+			// attribute<uint8>           bbg2015_100m_src     (NL_grid/domain)     := Make100mgrids/y2015/Result_discrete, StorageName = "%SourceDataDir%/CBS/BestandBodemGebruik/Tijdreeks/BBG_2015_100m.tif";
+
+			container Make25mgrids := 
+				for_each_ne(
+					typeringen/bbg/bbg_jaren/name
+					, 'DiscreteAllocation25mT('+string(typeringen/bbg/bbg_jaren/values)+')'
+				);
+				
+			container Make100mgrids := 
+				for_each_ne(
+					typeringen/bbg/bbg_jaren/name
+					, 'DiscreteAllocation100mT('+string(typeringen/bbg/bbg_jaren/values)+')'
+				);
+		
+			Template DiscreteAllocation100mT
+			{
+				///
+				parameter<uint32> year;
+				///
+				
+				attribute <typeringen/bbg> Result_discrete (NL_grid/domain) := Allocation/LandUse_rel[invert(Input/Compacted/ADomain/nr_OrgEntity)];
+			
+				container Input
+				{
+					unit<uint32> AggRegio := Brondata/CBS/regios/corop/src_corop47;
+					
+					container Compacted
+					{
+						unit<uint32> ADomain := subset(IsDefined(AggRegio/per_grid))
+						, DialogType = "Map"
+						, DialogData = "BaseGrid";
+						attribute<ADomain> BaseGrid (NL_grid/domain) := invert(ADomain/nr_OrgEntity);
+
+						container Suitability :=
+							for_each_nedv(
+								typeringen/bbg/name
+								, 'value(sum(bbg'+string(year)+'_10m == typeringen/bbg/V/'+typeringen/bbg/name+' ? 1 : 0, NL_grid/domain_10m/grid_100m_rel), int32)[ADomain/nr_OrgEntity]'
+								// , 'value(sum(bbg'+string(year)+'_10m_src == '+string(typeringen/bbg/bbg_ek)+'[uint8] ? 1 : 0, NL_grid/domain_10m/grid_100m_rel), int32)[ADomain/nr_OrgEntity]'
+								, ADomain
+								, int32
+							);
+							
+						attribute<AggRegio> AtomicRegionMap (ADomain) := AggRegio/per_grid[ADomain/nr_orgEntity]
+						{
+							attribute<AggRegio> id (AggRegio) := id(AggRegio);
+						}
+						
+						container RegionSets :=
+							for_each_nedv(
+								typeringen/bbg/name
+								, 'AggRegio/per_grid'
+								, NL_grid/domain
+								, AggRegio
+							);
+					}
+
+					container Claims
+					{
+						container maxclaims := 
+							for_each_nedv(
+								  typeringen/bbg/name
+								, 'sum(uint32(bbg'+string(year)+'_10m == typeringen/bbg/V/'+typeringen/bbg/name+'), AggRegio/per_grid_10m)'
+								// , 'sum(uint32(bbg'+string(year)+'_10m_src == '+string(typeringen/bbg/bbg_ek)+'[uint8]), AggRegio/per_grid_10m)'
+								, AggRegio
+								, uint32
+							)
+						{
+							attribute<uint32> Totaal (AggRegio) := = 'add('+AsItemList(typeringen/bbg/name)+')';
+						}
+						
+						container minclaims := 
+							for_each_nedv(
+								  typeringen/bbg/name
+								, 'const(0, AggRegio)'
+								, AggRegio
+								, uint32
+							);
+					}
+				}
+
+				container Allocation
+				{
+					unit<uint8> Partitioning: nrofrows = 1
+					{ 
+					   attribute<string> name   : ['id'];
+					}
+					parameter<int32> threshold := int32(0);
+					container FeasibleSolution;
+
+					container Disc_alloc := 
+						discrete_alloc(
+							  typeringen/bbg/name									// 1 string 	attribute
+							, Input/Compacted/ADomain								// 2 uint32		unit
+							, Input/Compacted/Suitability							// 3 int32		container
+							, const(0[Partitioning], typeringen/bbg)				// 4 uint8		attribute
+							, Partitioning/name								// 5 string		attribute
+							, Input/AggRegio										// 6 uint16		unit
+							, Input/Compacted/AtomicRegionMap						// 7 uint16		attribute
+							, Input/Claims/minclaims								// 8 uint32		container
+							, Input/Claims/maxclaims								// 9 uint32		container
+							, threshold										// 10 int32		parameter
+							, FeasibleSolution								// 11 (empty)	container
+						);
+
+					attribute<typeringen/bbg> LandUse_rel(Input/Compacted/ADomain) := Disc_alloc/landuse;
+					// attribute<uint8> LandUse_rel(Input/Compacted/ADomain) := Disc_alloc/landuse;
+				}
+			}
+			
+			Template DiscreteAllocation25mT
+			{
+				///
+				parameter<uint32> year;
+				///
+				
+				attribute <typeringen/bbg> Result_discrete (NL_grid/domain_25m) := Allocation/LandUse_rel[invert(Input/Compacted/ADomain/nr_OrgEntity)];
+			
+				container Input
+				{
+					unit<uint32> AggRegio := Brondata/CBS/regios/corop/src_corop47;
+					
+					container Compacted
+					{
+						unit<uint32> ADomain := subset(IsDefined(AggRegio/per_grid_25m))
+						, DialogType = "Map"
+						, DialogData = "BaseGrid";
+						attribute<ADomain> BaseGrid (NL_grid/domain_25m) := invert(ADomain/nr_OrgEntity);
+
+						container Suitability :=
+							for_each_nedv(
+								typeringen/bbg/name
+								, 'value(sum(bbg'+string(year)+'_10m == typeringen/bbg/V/'+typeringen/bbg/name+' ? 1 : 0, NL_grid/domain_10m/grid_25m_rel), int32)[ADomain/nr_OrgEntity]'
+								, ADomain
+								, int32
+							);
+							
+						attribute<AggRegio> AtomicRegionMap (ADomain) := AggRegio/per_grid_25m[ADomain/nr_orgEntity]
+						{
+							attribute<AggRegio> id (AggRegio) := id(AggRegio);
+						}
+						
+						container RegionSets :=
+							for_each_nedv(
+								typeringen/bbg/name
+								, 'AggRegio/per_grid_25m'
+								, NL_grid/domain_25m
+								, AggRegio
+							);
+					}
+
+					container Claims
+					{
+						container maxclaims := 
+							for_each_nedv(
+								  typeringen/bbg/name
+								, 'sum(uint32(bbg'+string(year)+'_10m == typeringen/bbg/V/'+typeringen/bbg/name+'), AggRegio/per_grid_10m)'
+								, AggRegio
+								, uint32
+							)
+						{
+							attribute<uint32> Totaal (AggRegio) := = 'add('+AsItemList(typeringen/bbg/name)+')';
+						}
+						
+						container minclaims := 
+							for_each_nedv(
+								  typeringen/bbg/name
+								, 'const(0, AggRegio)'
+								, AggRegio
+								, uint32
+							);
+					}
+				}
+
+				container Allocation
+				{
+					unit<uint8> Partitioning: nrofrows = 1
+					{ 
+					   attribute<string> name   : ['id'];
+					}
+					parameter<int32> threshold := int32(0);
+					container FeasibleSolution;
+
+					container Disc_alloc := 
+						discrete_alloc(
+							  typeringen/bbg/name									// 1 string 	attribute
+							, Input/Compacted/ADomain								// 2 uint32		unit
+							, Input/Compacted/Suitability							// 3 int32		container
+							, const(0[Partitioning], typeringen/bbg)				// 4 uint8		attribute
+							, Partitioning/name								// 5 string		attribute
+							, Input/AggRegio										// 6 uint16		unit
+							, Input/Compacted/AtomicRegionMap						// 7 uint16		attribute
+							, Input/Claims/minclaims								// 8 uint32		container
+							, Input/Claims/maxclaims								// 9 uint32		container
+							, threshold										// 10 int32		parameter
+							, FeasibleSolution								// 11 (empty)	container
+						);
+
+					attribute<typeringen/bbg> LandUse_rel(Input/Compacted/ADomain) := Disc_alloc/landuse;
+				}
+			}
+			
+		}
+	}

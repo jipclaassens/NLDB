@@ -1,0 +1,142 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2015                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met selectie BAG voor een polygoon            //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+Template BAG_poly
+{
+	// begin case parameters
+	unit<uint32> selectie;
+	parameter<string> gebiedsnaam;
+	parameter<Brondata/CBS/provincie> prov_rel;
+	// einde case parameters
+
+	container src: = Brondata/BAG_snapshot;
+	
+	unit<uint32> pand:= Subset(src/pand/provincie_rel == prov_rel)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pand.dbf'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+		attribute<string>   pand_id  := src/pand/identificatie[nr_OrgEntity];
+		attribute<int16>    bouwjaar := src/pand/bouwjaar[nr_OrgEntity];
+
+		attribute<geometries/rdc> vlak(polygon): = value(src/pand/geometry_mm[nr_OrgEntity],geometries/rdc)
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pand.shp'";
+	}
+
+	unit<uint32> standplaats:= Subset(src/standplaats/provincie_rel == prov_rel)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/standplaats.dbf'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+//		attribute<string>   sta_id:= src/standplaats/identificatie[nr_OrgEntity];
+		attribute<geometries/rdc> vlak(polygon) := value(src/standplaats/geometry_mm[nr_OrgEntity],geometries/rdc)
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/standplaats.shp'";
+	}
+
+	unit<uint32> ligplaats:= Subset(src/ligplaats/provincie_rel == prov_rel)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/ligplaats.dbf'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+//		attribute<string>   lig_id:= src/ligplaats/LIG_ID[nr_OrgEntity];
+		attribute<geometries/rdc> vlak(polygon) := value(src/ligplaats/geometry_mm[nr_OrgEntity],geometries/rdc)
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/ligplaats.shp'";
+	}
+
+	unit<uint32> verblijfs_object := Subset(src/verblijfs_object/provincie_rel == prov_rel)
+	,	DialogType  = "Map"
+	,	DialogData  = "locatie"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/verblijfs_object.dbf'"
+	{
+		attribute<geometries/rdc> locatie:= value(src/verblijfs_object/geometry_mm[nr_OrgEntity],geometries/rdc)
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/verblijfs_object.shp'";
+
+		attribute<string>   vbo_id              := src/verblijfs_object/identificatie[nr_OrgEntity];
+		attribute<string>   nummeraanduiding_id := src/verblijfs_object/nummeraanduiding_id[nr_OrgEntity];
+		attribute<string>   openbareruimte_id   := rjoin(nummeraanduiding_id, src/nummeraanduiding/identificatie, src/nummeraanduiding/openbareruimte_id);
+		
+		attribute<m2>       oppervlakte         := value(src/verblijfs_object/oppervlakte[nr_OrgEntity], m2);
+
+		attribute<bool>     is_woon             := src/verblijfs_object/gebruiksdoelen/woon[nr_OrgEntity];
+		attribute<bool>     is_winkel           := src/verblijfs_object/gebruiksdoelen/winkel[nr_OrgEntity];
+		attribute<bool>     is_logies           := src/verblijfs_object/gebruiksdoelen/logies[nr_OrgEntity];
+		attribute<bool>     is_gezondheidszorg  := src/verblijfs_object/gebruiksdoelen/gezondheidszorg[nr_OrgEntity];
+		attribute<bool>     is_kantoor          := src/verblijfs_object/gebruiksdoelen/kantoor[nr_OrgEntity];
+		attribute<bool>     is_bijeenkomst      := src/verblijfs_object/gebruiksdoelen/bijeenkomst[nr_OrgEntity];
+		attribute<bool>     is_onderwijs        := src/verblijfs_object/gebruiksdoelen/onderwijs[nr_OrgEntity];
+		attribute<bool>     is_industrie        := src/verblijfs_object/gebruiksdoelen/industrie[nr_OrgEntity];
+		attribute<bool>     is_overige_gebruiks := src/verblijfs_object/gebruiksdoelen/overige_gebruiks[nr_OrgEntity];
+		attribute<bool>     is_sport            := src/verblijfs_object/gebruiksdoelen/sport[nr_OrgEntity];
+		attribute<bool>     is_cel              := src/verblijfs_object/gebruiksdoelen/cel[nr_OrgEntity];
+
+		attribute<string>   straatnaam          := src/verblijfs_object/straatnaam[nr_OrgEntity];
+		attribute<uint32>   huisnummer          := uint32(src/verblijfs_object/huisnummer[nr_OrgEntity]);
+		attribute<string>   huisletter          := MakeDefined(src/verblijfs_object/huisletter[nr_OrgEntity],'');
+		attribute<string>   toevoeging          := src/verblijfs_object/toevoeging[nr_OrgEntity];
+		attribute<string>   postcode            := src/verblijfs_object/postcode[nr_OrgEntity];
+		attribute<string>   woonplaats          := src/verblijfs_object/woonplaatsnaam[nr_OrgEntity];
+	}
+
+	unit<uint32> woonplaats:=
+		Subset(isDefined(point_in_polygon(centroid_or_mid(src/woonplaats/geometry_mm[geometries/rdc]), selectie/geometry)))
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/woonplaats.dbf'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+		attribute<string> label    := src/woonplaats/woonplaatsnaam[nr_OrgEntity];
+		//attribute<string> gemcode  := src/woonplaats/GEM_CODE[nr_OrgEntity];
+		//attribute<string> gemeente := src/woonplaats/GEM_NAAM[nr_OrgEntity];
+
+		attribute<geometries/rdc> vlak (polygon) := value(src/woonplaats/geometry_mm[nr_OrgEntity],geometries/rdc) 
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/woonplaats.shp'";
+	}
+	/*
+	unit<uint32> pc6_huisnr:=
+		Subset(IsDefined(point_in_polygon(src/afleidingen/postcode_huisnr/geometry, selectie/geometry)))
+	,	DialogType  = "Map"
+	,	DialogData  = "locatie"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pc6_huisnr.dbf'"
+	{
+		attribute<geometries/rdc> locatie:= src/afleidingen/postcode_huisnr/geometry[nr_OrgEntity]
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pc6_huisnr.shp'";
+		attribute<string>   key:= src/afleidingen/postcode_huisnr/values[nr_OrgEntity];
+	}
+
+	unit<uint32> pc6:=
+		Subset(IsDefined(point_in_polygon(src/afleidingen/postcode/geometry, selectie/geometry)))
+	,	DialogType  = "Map"
+	,	DialogData  = "locatie"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pc6.dbf'"
+	{
+		attribute<geometries/rdc> locatie:= src/afleidingen/postcode/geometry[nr_OrgEntity]
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/pc6.shp'";
+		attribute<string>   key:= src/afleidingen/postcode/values[nr_OrgEntity];
+	}
+
+	unit<uint32> openbareruimte: expr =
+		"Subset("
+			"   PointCol(Brondata/BAG/openbareruimte/locatie) >= X_min "
+			"&& PointCol(Brondata/BAG/openbareruimte/locatie) <= X_max "
+			"&& PointRow(Brondata/BAG/openbareruimte/locatie) >= Y_min "
+			"&& PointRow(Brondata/BAG/openbareruimte/locatie) <= Y_max"
+		")"
+	,	DialogType  = "Map"
+	,	DialogData  = "locatie"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/openbareruimte.dbf'"
+	{
+		attribute<geometries/rdc> locatie
+		:	expr        = "Brondata/BAG/openbareruimte/locatie[nr_OrgEntity]"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BAG/openbareruimte.shp'";
+		attribute<.>      id:   expr = "id(.)";
+		attribute<string> naam: expr = "Brondata/BAG/openbareruimte/naam[nr_OrgEntity]";
+		attribute<string> type: expr = "Brondata/BAG/openbareruimte/type[nr_OrgEntity]";
+	}
+	*/
+}

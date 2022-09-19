@@ -1,0 +1,173 @@
+container NOVI_bereikbaarheid: Using = "eenheden"
+{       
+	unit<uint32>       org                    := Brondata/CBS/regios/Postcode_gebieden/Postcode6_punten;
+	unit<uint32>       dest                   := Brondata/LISA/LISA2018/HeeftBanen;
+	
+	container Results := org
+	, FreeData = "false"
+	{
+		attribute<string>                PC6      (org)              := org/label, DialogType = "LabelText";
+		attribute<float32>               Jobs_30min_Pedestrian (org) := Analyse/NOVI_bereikbaarheid/ReadODperNetwerkType/Pedestrian/ReadODTravelTimeLimit/minutes_30/OD_limit_traveltime_jobs/D_i;
+		attribute<float32>               Jobs_30min_Bike (org)       := Analyse/NOVI_bereikbaarheid/ReadODperNetwerkType/Bike/ReadODTravelTimeLimit/minutes_30/OD_limit_traveltime_jobs/D_i;
+		attribute<float32>               Jobs_30min_Car (org)        := Analyse/NOVI_bereikbaarheid/ReadODperNetwerkType/Car/ReadODTravelTimeLimit/minutes_30/OD_limit_traveltime_jobs/D_i;
+		attribute<float32>               Jobs_45min_Pedestrian (org) := Analyse/NOVI_bereikbaarheid/ReadODperNetwerkType/Pedestrian/ReadODTravelTimeLimit/minutes_45/OD_limit_traveltime_jobs/D_i;
+		attribute<float32>               Jobs_45min_Bike (org)       := Analyse/NOVI_bereikbaarheid/ReadODperNetwerkType/Bike/ReadODTravelTimeLimit/minutes_45/OD_limit_traveltime_jobs/D_i;
+		attribute<float32>               Jobs_45min_Car (org)        := Analyse/NOVI_bereikbaarheid/ReadODperNetwerkType/Car/ReadODTravelTimeLimit/minutes_45/OD_limit_traveltime_jobs/D_i;
+	}
+	
+	container GenerateFSS
+	{
+		parameter<String> Generate_Pedestrian_30m := 'Ready',
+			ExplicitSuppliers = "/Analyse/NOVI_bereikbaarheid/CreateODperNetwerkType/Pedestrian/CreateODTravelTimeLimit/minutes_30/OD_limit_traveltime_jobs/D_i";
+		parameter<String> Generate_Bike_30m := 'Ready',
+			ExplicitSuppliers = "Analyse/NOVI_bereikbaarheid/CreateODperNetwerkType/Bike/CreateODTravelTimeLimit/minutes_30/OD_limit_traveltime_jobs/D_i";
+		parameter<String> Generate_Car_30m := 'Ready',
+			ExplicitSuppliers = "Analyse/NOVI_bereikbaarheid/CreateODperNetwerkType/Car/CreateODTravelTimeLimit/minutes_30/OD_limit_traveltime_jobs/D_i";
+			
+		parameter<String> Generate_Pedestrian_45m := 'Ready',
+			ExplicitSuppliers = "Analyse/NOVI_bereikbaarheid/CreateODperNetwerkType/Pedestrian/CreateODTravelTimeLimit/minutes_45/OD_limit_traveltime_jobs/D_i";
+		parameter<String> Generate_Bike_45m := 'Ready',
+			ExplicitSuppliers = "Analyse/NOVI_bereikbaarheid/CreateODperNetwerkType/Bike/CreateODTravelTimeLimit/minutes_45/OD_limit_traveltime_jobs/D_i";
+		parameter<String> Generate_Car_45m := 'Ready',
+			ExplicitSuppliers = "Analyse/NOVI_bereikbaarheid/CreateODperNetwerkType/Car/CreateODTravelTimeLimit/minutes_45/OD_limit_traveltime_jobs/D_i";
+	}
+	
+	unit<uint8> reistijd_grenzen: nrofrows = 3
+	{
+		attribute<string> name : ['2', '30','45'];
+		attribute<string> label := 'minutes_' + name, DialogType = "LabelText";
+		attribute<s>      reistijd_in_s         := float32(name) * 60[s];
+	}
+	
+	
+	container CreateODperNetwerkType := 
+		for_each_ne(
+			typeringen/OSM/netwerk_type/name
+			,'MakeFSS(org, dest,'+quote(typeringen/OSM/netwerk_type/name)+')'
+		);
+		
+	container ReadODperNetwerkType := 
+		for_each_ne(
+			typeringen/OSM/netwerk_type/name
+			,'ReadFSS(org, dest,'+quote(typeringen/OSM/netwerk_type/name)+')'
+		);
+
+	Template MakeFSS
+	{
+		unit<uint32>       org;
+		unit<uint32>       dest;
+		parameter<string>  netwerk_type;
+		//////
+	
+		container NetwerkSpec := =
+			'rekenschemas/netwerk(
+				  org
+				, dest
+				, Brondata/OSM/NetworkPreperation/'+string(netwerk_type)+'/All
+				, org/geometry
+				, dest/geometry
+				, Brondata/OSM/NetworkPreperation/'+string(netwerk_type)+'/All/line
+				, '+quote(netwerk_type)+'
+			)';
+		
+		container CreateODTravelTimeLimit := 
+			for_each_ne(
+				reistijd_grenzen/label
+				,'CreateODTravelTimeLimit_T('+quote(reistijd_grenzen/name)+','+string(reistijd_grenzen/reistijd_in_s)+')'
+			);
+		
+		template CreateODTravelTimeLimit_T
+		{	
+			parameter<string> reistijd_string;
+			parameter<uint32> reistijd_uint32;
+			parameter<s>      reistijd_in_s    := reistijd_uint32[s];
+		
+			unit<uint64> OD_limit_traveltime_counts := 
+				dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel);endPoint(Node_rel);cut(OrgZone_max_imp);interaction(v_i,w_j,dist_decay):D_i,M_ix,C_j,M_xj'
+					, NetwerkSpec/OrgToDest/impedance
+					, NetwerkSpec/OrgToDest/F1
+					, NetwerkSpec/OrgToDest/F2
+					
+					, NetwerkSpec/OrgToDest/LinkSet/wegtype != /typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != /typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+					, NetwerkSpec/OrgToDest/nr_orgNode
+					, NetwerkSpec/OrgToDest/nr_destNode
+					, reistijd_in_s
+					, 1.0f, 1.0f, 0.0f
+				)
+			, StorageName = "='%LocalDataDir%/NLDB/OD_limit_'+netwerk_type+'_traveltime_'+reistijd_string+'min_counts.fss'";
+			
+			unit<uint64> OD_limit_traveltime_jobs := 
+				dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel);endPoint(Node_rel);cut(OrgZone_max_imp);interaction(v_i,w_j,dist_decay):D_i'
+					, NetwerkSpec/OrgToDest/impedance
+					, NetwerkSpec/OrgToDest/F1
+					, NetwerkSpec/OrgToDest/F2
+					
+					, NetwerkSpec/OrgToDest/LinkSet/wegtype != /typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != /typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+					, NetwerkSpec/OrgToDest/nr_orgNode
+					, NetwerkSpec/OrgToDest/nr_destNode
+					, reistijd_in_s
+					, 1.0f, float32(dest/nr_banen), 0.0f
+				)
+			, StorageName = "='%LocalDataDir%/NLDB/OD_limit_'+netwerk_type+'_traveltime_'+reistijd_string+'min_jobs.fss'";
+			
+			unit<uint64> OD_limit_traveltime := 
+				dijkstra_m64('bidirectional(link_flag);startPoint(Node_rel);endPoint(Node_rel);cut(OrgZone_max_imp);od:OrgZone_rel,DstZone_rel,impedance'
+					, NetwerkSpec/OrgToDest/impedance
+					, NetwerkSpec/OrgToDest/F1
+					, NetwerkSpec/OrgToDest/F2
+					//////
+					, NetwerkSpec/OrgToDest/LinkSet/wegtype != /typeringen/OSM/wegtype/V/motorway  && NetwerkSpec/OrgToDest/LinkSet/wegtype != /typeringen/OSM/wegtype/V/motorway_link // motor way en motor way link, snelwegen zijn niet bidirectional
+					, NetwerkSpec/OrgToDest/nr_orgNode
+					, NetwerkSpec/OrgToDest/nr_destNode
+					, reistijd_in_s
+				)
+			, StorageName = "='%LocalDataDir%/NLDB/OD_limit_'+netwerk_type+'_traveltime_'+reistijd_string+'min.fss'"
+			{
+				attribute<Time>         Duration                  := (Impedance[uint32])[Time];
+			}
+		}
+	}
+	
+	Template ReadFSS
+	{
+		unit<uint32>       org;
+		unit<uint32>       dest;
+		parameter<string>  netwerk_type;
+		//////
+	
+		container ReadODTravelTimeLimit := 
+			for_each_ne(
+				reistijd_grenzen/label
+				,'ReadODTravelTimeLimit_T('+quote(reistijd_grenzen/name)+','+string(reistijd_grenzen/reistijd_in_s)+')'
+			);
+		
+		template ReadODTravelTimeLimit_T
+		{	
+			parameter<string> reistijd_string;
+			parameter<uint32> reistijd_uint32;
+			parameter<s>      reistijd_in_s    := reistijd_uint32[s];
+		
+			unit<uint64> OD_limit_traveltime
+			: StorageName = "='%LocalDataDir%/NLDB/OD_limit_'+netwerk_type+'_traveltime_'+reistijd_string+'min.fss'"
+			, StorageReadOnly = "true"
+			{
+				attribute<float32>       impedance;
+				attribute<ReadFSS/org>   OrgZone_rel;
+				attribute<ReadFSS/dest>  DstZone_rel;
+				attribute<Time>          Duration;
+				
+				attribute<uint32>        SumBanen (ReadFSS/org) := sum(..../dest/banen_per_grid[DstZone_rel], OrgZone_rel);
+				attribute<string>        PC6      (ReadFSS/org) := ..../org/label;
+				attribute<geometries/rdc>        PC6_geom      (ReadFSS/org) := ..../org/geometry;
+			}
+			
+			unit<uint64> OD_limit_traveltime_jobs
+			: StorageName = "='%LocalDataDir%/NLDB/OD_limit_'+netwerk_type+'_traveltime_'+reistijd_string+'min_jobs.fss'"
+			, StorageReadOnly = "true"
+			{
+				attribute<float32>       D_i (org);
+				// attribute<string>        PC6_rel  := id(.);
+			}
+		}
+	}
+}

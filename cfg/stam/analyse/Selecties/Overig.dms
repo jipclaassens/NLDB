@@ -1,0 +1,125 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container Overig
+{
+	container cbs_buurt
+	{
+		unit<uint32> pointset
+		:	expr           = "Sequence2Points(Brondata/CBS/buurt/vlak)"
+		,	DisableStorage = "True"
+		,	isHidden       = "True"
+		{
+			attribute<bool> PointInSelection: expr =
+				"   PointCol(point) >= X_min"
+				"&& PointCol(point) <= X_max"
+				"&& PointRow(point) >= Y_min"
+				"&& PointRow(point) <= Y_max";
+		}
+		unit<uint32> selection
+		:	expr        = "Subset(any(pointset/PointInSelection, pointset/SequenceNr))"
+		,	DialogType  = "Map"
+		,	DialogData  = "vlak"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/CBS/buurt.dbf'"
+		{
+			attribute<geometries/rdc> vlak (polygon)
+			:	expr        = "Brondata/CBS/buurt/vlak[nr_OrgEntity]"
+			,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/CBS/buurt.shp'";
+			attribute<.>          id:         expr = "id(.)";
+			//attribute<uint32>     Woningen:   expr = "uint32(Brondata/CBS/buurt/Woningen[nr_OrgEntity])";
+// 			attribute<uint32>     Inwoners:   expr = "uint32(Brondata/CBS/buurt/AANT_INW[nr_OrgEntity])";
+// 			attribute<percentage> P_00_14_JR: expr = "value(Brondata/CBS/buurt/P_00_14_JR[nr_OrgEntity], percentage)";
+// 			attribute<percentage> P_65_EO_JR: expr = "value(Brondata/CBS/buurt/P_65_EO_JR[nr_OrgEntity], percentage)";
+			attribute<string>     label:      expr = "Brondata/CBS/buurt/label[nr_OrgEntity]";
+			attribute<String>     bu_code:    expr = "Brondata/CBS/buurt/bu_code[nr_OrgEntity]";
+			attribute<String>     wk_code:    expr = "Brondata/CBS/buurt/wk_code[nr_OrgEntity]";
+			attribute<String>     gm_code:    expr = "Brondata/CBS/buurt/gm_code[nr_OrgEntity]";
+			attribute<String>     gemeente:   expr = "rjoin(gm_code,Brondata/CBS/gemeente/gm_code, Brondata/CBS/gemeente/gm_naam)";
+			attribute<String>     wijk:       expr = "rjoin(wk_code,Brondata/CBS/wijk/wk_code, Brondata/CBS/wijk/label)";
+
+		}
+	}
+	container cbs_wijk
+	{
+		unit<uint32> pointset
+		:	expr           = "Sequence2Points(Brondata/CBS/wijk/vlak)"
+		,	DisableStorage = "True"
+		,	isHidden       = "True"
+		{
+			attribute<bool> PointInSelection: expr =
+				"   PointCol(point) >= X_min"
+				"&& PointCol(point) <= X_max"
+				"&& PointRow(point) >= Y_min"
+				"&& PointRow(point) <= Y_max";
+		}
+		unit<uint32> selection
+		:	expr        = "Subset(any(pointset/PointInSelection, pointset/SequenceNr))"
+		,	DialogType  = "Map"
+		,	DialogData  = "vlak"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/CBS/wijk.dbf'"
+		{
+			attribute<geometries/rdc> vlak (polygon)
+			:	expr        = "Brondata/CBS/wijk/vlak[nr_OrgEntity]"
+			,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/CBS/wijk.shp'";
+			attribute<.>          id:         expr = "id(.)";
+			attribute<string>     label:      expr = "Brondata/CBS/wijk/label[nr_OrgEntity]";
+			attribute<String>     wk_code:    expr = "Brondata/CBS/wijk/wk_code[nr_OrgEntity]";
+			attribute<String>     gm_code:    expr = "Brondata/CBS/wijk/gm_code[nr_OrgEntity]";
+			attribute<String>     gemeente:   expr = "rjoin(gm_code,Brondata/CBS/gemeente/gm_code, Brondata/CBS/gemeente/gm_naam)";
+		}
+	}
+	container cbs_gemeente
+	{
+		unit<uint32> pointset
+		:	expr           = "Sequence2Points(Brondata/CBS/gemeente/vlak)"
+		,	DisableStorage = "True"
+		,	isHidden       = "True"
+		{
+			attribute<bool> PointInSelection: expr =
+				"   PointCol(point) >= X_min"
+				"&& PointCol(point) <= X_max"
+				"&& PointRow(point) >= Y_min"
+				"&& PointRow(point) <= Y_max";
+		}
+		unit<uint32> selection
+		:	expr        = "Subset(any(pointset/PointInSelection, pointset/SequenceNr))"
+		,	DialogType  = "Map"
+		,	DialogData  = "vlak"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/CBS/gemeente.dbf'"
+		{
+			attribute<geometries/rdc> vlak (polygon)
+			:	expr        = "Brondata/CBS/gemeente/vlak[nr_OrgEntity]"
+			,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/CBS/gemeente.shp'";
+			attribute<.>          id:         expr = "id(.)";
+			attribute<string>     label:      expr = "Brondata/CBS/gemeente/label[nr_OrgEntity]";
+			attribute<string>     GM_CODE:    expr = "Brondata/CBS/gemeente/GM_CODE[nr_OrgEntity]";
+			
+		}
+	}
+	unit<uint32> bebouwd_gebied_2003: expr = 
+		"Subset("
+			"("
+				"   PointCol(Brondata/VROM/bebouwd_gebied_2003/locatie) >= X_min "
+				"&& PointCol(Brondata/VROM/bebouwd_gebied_2003/locatie) <= X_max "
+				"&& PointRow(Brondata/VROM/bebouwd_gebied_2003/locatie) >= Y_min "
+				"&& PointRow(Brondata/VROM/bebouwd_gebied_2003/locatie) <= Y_max"
+			")"
+			"|| id(Brondata/VROM/bebouwd_gebied_2003) == value(0,Brondata/VROM/bebouwd_gebied_2003)" // voor Amsterdam
+		")"
+	,	DialogType  = "Map"
+	,	DialogData  = "locatie"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/VROM/bebouwd.dbf'"
+	{
+		attribute<geometries/rdc> vlak (polygon)
+		:	expr        = "Brondata/VROM/bebouwd_gebied_2003/boundary[nr_OrgEntity]"
+		,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/VROM/bebouwd.shp'";
+		attribute<.>        id: expr = "id(.)";
+	}
+}

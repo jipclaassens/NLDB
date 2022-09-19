@@ -1,0 +1,158 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2011                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container BRT
+{
+	unit<uint32> gebouw :=
+		Subset(
+			any(
+				   PointCol(Brondata/BRT/vlakken/gebouw/pointset/point) >= X_min
+				&& PointCol(Brondata/BRT/vlakken/gebouw/pointset/point) <= X_max
+				&& PointRow(Brondata/BRT/vlakken/gebouw/pointset/point) >= Y_min
+				&& PointRow(Brondata/BRT/vlakken/gebouw/pointset/point) <= Y_max
+				, Brondata/BRT/vlakken/gebouw/pointset/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/gebouw.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+		attribute<bool>     isHoogbouw    := BronData/BRT/vlakken/gebouw/isHoogbouw[nr_OrgEntity];
+		attribute<string>   hoogteklas    := Brondata/BRT/vlakken/gebouw/hoogteklas[nr_Orgentity]; 
+		attribute<geometries/rdc> vlak(polygon) := BronData/BRT/vlakken/gebouw/vlak[nr_OrgEntity];
+	}
+	unit<uint32> terrein :=
+		Subset(
+			any(
+				   PointCol(Brondata/BRT/vlakken/terrein/pointset/point) >= X_min
+				&& PointCol(Brondata/BRT/vlakken/terrein/pointset/point) <= X_max
+				&& PointRow(Brondata/BRT/vlakken/terrein/pointset/point) >= Y_min
+				&& PointRow(Brondata/BRT/vlakken/terrein/pointset/point) <= Y_max
+				, Brondata/BRT/vlakken/terrein/pointset/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/terrein.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+		attribute<Klassificaties/BRT_terreintype> type         := BronData/BRT/vlakken/terrein/type[nr_OrgEntity];
+		attribute<int8>                           hoogteniveau := Brondata/BRT/vlakken/terrein/hoogteniveau[nr_Orgentity]; 
+		attribute<geometries/rdc>                       vlak(polygon):= BronData/BRT/vlakken/terrein/vlak[nr_OrgEntity];
+	}
+	unit<uint32> waterdeel_vlak :=
+		Subset(
+			any(
+				   PointCol(Brondata/BRT/vlakken/waterdeel/pointset/point) >= X_min
+				&& PointCol(Brondata/BRT/vlakken/waterdeel/pointset/point) <= X_max
+				&& PointRow(Brondata/BRT/vlakken/waterdeel/pointset/point) >= Y_min
+				&& PointRow(Brondata/BRT/vlakken/waterdeel/pointset/point) <= Y_max
+				, Brondata/BRT/vlakken/waterdeel/pointset/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/waterdeel.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+		attribute<int8>     hoogteniveau := Brondata/BRT/vlakken/waterdeel/hoogteniveau[nr_Orgentity]; 
+		attribute<geometries/rdc> vlak(polygon):= BronData/BRT/vlakken/waterdeel/vlak[nr_OrgEntity];
+	}
+
+	unit<uint32> waterdeel_lijn :=
+		Subset(
+			any(
+				   PointCol(Brondata/BRT/lijnen/waterdeel_lijn/pointset/point) >= X_min
+				&& PointCol(Brondata/BRT/lijnen/waterdeel_lijn/pointset/point) <= X_max
+				&& PointRow(Brondata/BRT/lijnen/waterdeel_lijn/pointset/point) >= Y_min
+				&& PointRow(Brondata/BRT/lijnen/waterdeel_lijn/pointset/point) <= Y_max
+				, Brondata/BRT/lijnen/waterdeel_lijn/pointset/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/waterdeel_lijn.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "lijn"
+	{
+		attribute<int8> hoogteniveau      := Brondata/BRT/lijnen/waterdeel_lijn/hoogteniveau[nr_Orgentity]; 
+		attribute<geometries/rdc> lijn(polygon) := BronData/BRT/lijnen/waterdeel_lijn/lijn[nr_OrgEntity];
+	}
+
+	unit<uint32> wegdeel :=
+		Subset(
+			any(
+				   PointCol(Brondata/BRT/vlakken/wegdeel/pointset/point) >= X_min
+				&& PointCol(Brondata/BRT/vlakken/wegdeel/pointset/point) <= X_max
+				&& PointRow(Brondata/BRT/vlakken/wegdeel/pointset/point) >= Y_min
+				&& PointRow(Brondata/BRT/vlakken/wegdeel/pointset/point) <= Y_max
+				, Brondata/BRT/vlakken/wegdeel/pointset/SequenceNr
+			)
+		)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/wegdeel.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "vlak"
+	{
+		attribute<Klassificaties/BRT_wegvaktype > type          := Brondata/BRT/vlakken/wegdeel/TYPE[nr_OrgEntity];
+		attribute<int8>                           hoogteniveau  := Brondata/BRT/vlakken/wegdeel/hoogteniveau[nr_Orgentity]; 
+		attribute<geometries/rdc>                       vlak(polygon) := BronData/BRT/vlakken/wegdeel/vlak[nr_OrgEntity];
+	}
+
+	unit<uint32> wegdeel_lijn :=
+		Subset(
+			any(
+				   PointCol(BronData/BRT/lijnen/wegdeel_lijn/pointset/point) >= X_min
+				&& PointCol(BronData/BRT/lijnen/wegdeel_lijn/pointset/point) <= X_max
+				&& PointRow(BronData/BRT/lijnen/wegdeel_lijn/pointset/point) >= Y_min
+				&& PointRow(BronData/BRT/lijnen/wegdeel_lijn/pointset/point) <= Y_max
+				 , BronData/BRT/lijnen/wegdeel_lijn/pointset/SequenceNr
+			)
+		)
+	,	DialogType  = "Map"
+	,	DialogData  = "line"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/wegdeel_lijn.fss'"
+	{
+		attribute<int8>     hoogteniveau:= Brondata/BRT/lijnen/wegdeel_lijn/hoogteniveau[nr_Orgentity]; 
+		attribute<geometries/rdc> line(arc)   := BronData/BRT/lijnen/wegdeel_lijn/lijn[nr_OrgEntity];
+	}
+
+	unit<uint32> wegdeel_hartlijn :=
+		Subset(
+			any(
+				   PointCol(BronData/BRT/lijnen/wegdeel_hartlijn/pointset/point) >= X_min
+				&& PointCol(BronData/BRT/lijnen/wegdeel_hartlijn/pointset/point) <= X_max
+				&& PointRow(BronData/BRT/lijnen/wegdeel_hartlijn/pointset/point) >= Y_min
+				&& PointRow(BronData/BRT/lijnen/wegdeel_hartlijn/pointset/point) <= Y_max
+				 , BronData/BRT/lijnen/wegdeel_hartlijn/pointset/SequenceNr
+			)
+		)
+	,	DialogType  = "Map"
+	,	DialogData  = "line"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/wegdeel_hartlijn.fss'"
+	{
+		attribute<int8>     hoogteniveau := Brondata/BRT/lijnen/wegdeel_hartlijn/hoogteniveau[nr_Orgentity];
+		attribute<String>   straatnaam   := BronData/BRT/lijnen/wegdeel_hartlijn/straatnaam[nr_OrgEntity];
+		attribute<geometries/rdc> line(arc)    := BronData/BRT/lijnen/wegdeel_hartlijn/lijn[nr_OrgEntity];
+	}
+
+	unit<uint32> spoorbaandeel_lijn :=
+		Subset(
+			any(
+				   PointCol(BronData/BRT/lijnen/spoorbaandeel_lijn/pointset/point) >= X_min
+				&& PointCol(BronData/BRT/lijnen/spoorbaandeel_lijn/pointset/point) <= X_max
+				&& PointRow(BronData/BRT/lijnen/spoorbaandeel_lijn/pointset/point) >= Y_min
+				&& PointRow(BronData/BRT/lijnen/spoorbaandeel_lijn/pointset/point) <= Y_max
+				 , BronData/BRT/lijnen/spoorbaandeel_lijn/pointset/SequenceNr
+			)
+		)
+	,	DialogType  = "Map"
+	,	DialogData  = "lijn"
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/BRT/spoorbaandeel_lijn.fss'"
+	{
+		attribute<int8>     hoogteniveau := Brondata/BRT/lijnen/spoorbaandeel_lijn/hoogteniveau[nr_Orgentity]; 
+		attribute<geometries/rdc> lijn(arc)    := BronData/BRT/lijnen/spoorbaandeel_lijn/lijn[nr_OrgEntity];
+	}
+}

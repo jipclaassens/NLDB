@@ -1,0 +1,257 @@
+Container Parken : using = "eenheden"
+{	
+	parameter<string> GenerateAll := 'ready',
+	ExplicitSuppliers = "Phase1;Phase2;Phase3";
+
+	parameter<string> Phase1 := 'ready',
+	ExplicitSuppliers = "= AsList('Analysis_tiled/' +typeringen/corop/label+ '/Multi_to_singlepart_polygons2/MaakParkenGroter30k/park_defl',';')";
+	
+	parameter<string> Phase2 := 'ready',
+	ExplicitSuppliers = "= AsList('Analysis_tiled/' +typeringen/corop/label+ '/MaakParken_met_voetpad/Geometry',';')";
+	
+	parameter<string> Phase3 := 'ready',
+	ExplicitSuppliers = "= AsList('Analysis_tiled/' +typeringen/corop/label+ '/Multi_to_singlepart_polygons4/ParkenGroter40k/Geometry',';')";
+
+	parameter<string> src_data_voetgangerspaden := 'Voetgangerspaden';
+	parameter<string> src_data_terrein          := 'Terrein';
+	
+	container voetgangerspaden_tiled := 
+		for_each_ne(
+			typeringen/corop/label
+			, 'Tiled_dataselect(' +quote(typeringen/corop/label)+ ',' +quote(typeringen/corop/name)+ ', ' +quote(src_data_voetgangerspaden)+ ')'
+			);
+	
+	container terrein_tiled := 
+		for_each_ne(
+			typeringen/corop/label
+			, 'Tiled_dataselect(' +quote(typeringen/corop/label)+ ',' +quote(typeringen/corop/name)+ ', ' +quote(src_data_terrein)+ ')'
+			);
+	
+	container Datamerge_tiled := 
+		for_each_ne(
+			typeringen/corop/label
+			, 'Tiled_datamerge(' +quote(typeringen/corop/label)+ ',' +quote(typeringen/corop/name)+ ',' +quote(src_data_terrein)+ ',' +quote(src_data_voetgangerspaden)+ ')'
+			);
+	
+	container Analysis_tiled := 
+		for_each_ne(
+			typeringen/corop/label
+			, 'Tiled_Analysis(' +quote(typeringen/corop/label)+ ',' +quote(typeringen/corop/name)+ ',' +quote(src_data_terrein)+ ',' +quote(src_data_voetgangerspaden)+ ')'
+			);
+	
+	unit<uint32> Merge_Tiles := ='union_unit(' +AsItemList('Analysis_tiled/' +typeringen/corop/label+ '/ReadParken_final')+')'
+	, StorageName = "%LocalDataDir%/NLDB/Parken/Final_merged.fss"	
+	{
+		attribute<ipoint>    geometry_ipoint (poly) := ='union_data(.,' +AsItemList('Analysis_tiled/' +typeringen/corop/label+ '/ReadParken_final/Geometry')+')';
+	}
+	
+	unit<uint32> Analysis_merged
+	: StorageName = "%LocalDataDir%/NLDB/Parken/Final_merged.fss"
+	, StorageReadOnly = "True"
+	, DialogData = "geometry_rd" 
+	, DialogType = "map"
+	{
+		attribute<ipoint>          geometry_ipoint    (poly);
+		attribute<geometries/rdc>  geometry_rd        (poly) := geometry_ipoint[geometries/rdc];
+		attribute<m2>              area                      := area(geometry_ipoint[geometries/rdc], m2);
+		
+		unit<uint32> Parken_kleiner_dan_1milj := subset(./area < 850000[m2])
+		, DialogData = "geometry_rd_final" 
+		, DialogType = "map"
+		{
+			attribute<ipoint>          geometry_ipoint   (poly) := ../geometry_ipoint[nr_OrgEntity];
+			attribute<ipoint>          park_def_4D10m    (poly) := polygon_d4D(geometry_ipoint, 10d);
+
+			attribute<geometries/rdc>  geometry_rd_final (poly) := park_def_4D10m[geometries/rdc];
+			attribute<typeringen/BBG>  BBG_code                 := const(15[typeringen/BBG], .);
+			
+			unit<uint32>          Overlay_org_park := overlay_polygon(park_def_4D10m, Terrein_src/geometry_rd[ipoint]), FreeData = "False";
+			
+			attribute<uint32> orgpark_rel (Terrein_src) := rlookup(id(Terrein_src), Overlay_org_park/second_rel);
+			unit<uint32> orgpark := subset(IsDefined(rlookup(id(Terrein_src), Overlay_org_park/second_rel)))
+			{
+				attribute<geometries/rdc>  geometry_rd (poly)   := Terrein_src/geometry_rd[nr_OrgEntity];
+				attribute<typeringen/BBG>  BBG_code             := const(15[typeringen/BBG], .);
+			}
+		}
+	}
+	
+	
+	
+	Template Tiled_Analysis
+	{
+		////
+		parameter<string>  corop_label;
+		parameter<string>  corop_name;
+		parameter<string>  src_data1;
+		parameter<string>  src_data2;
+		////
+
+		unit<uint32> Union_TerreinWegen : nrofrows = 1
+		{
+			attribute<ipoint> geometry_ipoint (poly) := ='union_data(., Datamerge_tiled/' +corop_label+ '/Union_TerreinWegen/union)';
+		}
+		
+		unit<uint32> Multi_to_singlepart_polygons1 := split_polygon(Union_TerreinWegen/geometry_ipoint)
+		, FreeData = "False"
+		{
+			attribute<ipoint>         park_inf_4D10m (poly)  := polygon_i4D(geometry, 10d);
+			parameter<ipoint>         union          (poly)  := union_polygon(park_inf_4D10m);
+		}
+		
+		unit<uint32> Inflate1 : nrofrows = 1
+		{
+			attribute<ipoint> geometry_ipoint (poly) := union_data(., Multi_to_singlepart_polygons1/union);
+		}
+		
+		unit<uint32> Multi_to_singlepart_polygons2 := split_polygon(Inflate1/geometry_ipoint)
+		{
+			attribute<m2>    area               := area(geometry[geometries/rdc], m2);
+			
+			unit<uint32> MaakParkenGroter30k := subset(./area >= 30000 [m2])
+			// ,   StorageName = "='%LocalDataDir%/NLDB/Parken/' +corop_name+ '/ParkenGroter30k.fss'"
+			, FreeData = "False"
+			{
+				attribute<ipoint>         geometry  (poly)  := ../geometry[nr_OrgEntity];
+				attribute<ipoint>         park_defl (poly)  := polygon_d8D(geometry, 25d);
+			}
+		}
+		
+		// unit<uint32> ReadParkenGroter30k
+		// : StorageName = "='%LocalDataDir%/NLDB/Parken/' +corop_name+ '/ParkenGroter30k.fss'"
+		// , StorageReadOnly = "True"
+		// {
+			// attribute<ipoint>     park_defl(poly);
+		// }
+		
+		unit<uint32> Multi_to_singlepart_polygons3 := split_polygon(
+		// ReadParkenGroter30k/park_defl
+		Multi_to_singlepart_polygons2/MaakParkenGroter30k/park_defl
+		)
+		{
+			unit<uint32>            intersect_voetpad  := ='overlay_polygon(' +src_data2+ '_tiled/' +corop_label+ '/data_selectie/geometry_ipoint, geometry)';
+			attribute<uint32>       met_voetpad_rel    := rlookup(id(.), intersect_voetpad/second_rel);
+		}
+		
+		unit<uint32> MaakParken_met_voetpad := subset(IsDefined(Multi_to_singlepart_polygons3/met_voetpad_rel))
+		// , StorageName = "='%LocalDataDir%/NLDB/Parken/' +corop_name+ '/Parken_met_voetpad.fss'"
+		{
+			attribute<ipoint>         geometry (poly)                  := Multi_to_singlepart_polygons3/geometry[nr_OrgEntity];
+		}
+		
+		unit<uint32> ReadParken_met_voetpad
+		:= MaakParken_met_voetpad
+		// : StorageName = "='%LocalDataDir%/NLDB/Parken/' +corop_name+ '/Parken_met_voetpad.fss'"
+		// , StorageReadOnly = "True"
+		{
+			// attribute<ipoint>         geometry                 (poly);
+			attribute<ipoint>         park_defl_inf            (poly)  := polygon_i8D(geometry, 25d);
+			parameter<ipoint>         park_defl_inf_union      (poly)  := union_polygon(park_defl_inf);
+			parameter<ipoint>         park_defl_inf_infl       (poly)  := polygon_i8D(park_defl_inf_union, 25d);
+			parameter<ipoint>         park_defl_inf_infl_union (poly)  := union_polygon(park_defl_inf_infl);
+			parameter<ipoint>         park_defl_inf_infl_defl  (poly)  := polygon_d8D(park_defl_inf_infl_union, 25d);
+			
+			unit<uint32> multi_polygons : nrofrows = 1
+			{
+				attribute<ipoint> geometry (poly) := union_data(., ../park_defl_inf_infl_defl);
+			}
+		}
+		
+		unit<uint32> Multi_to_singlepart_polygons4 := split_polygon(ReadParken_met_voetpad/multi_polygons/geometry)
+		{
+			attribute<m2>    area               := area(geometry[geometries/rdc], m2);
+			
+			unit<uint32> ParkenGroter40k := subset(./area >= 40000 [m2])
+			// , StorageName = "='%LocalDataDir%/NLDB/Parken/' +corop_name+ '/ParkenGroter40k_final.fss'"
+			{
+				attribute<ipoint>         geometry (poly)        := ../geometry[nr_OrgEntity];
+			}
+		}
+		
+		unit<uint32> ReadParken_final
+		:= Multi_to_singlepart_polygons4/ParkenGroter40k
+		// : StorageName = "='%LocalDataDir%/NLDB/Parken/' +corop_name+ '/ParkenGroter40k_final.fss'"
+		// , StorageReadOnly = "True"
+		, DialogType = "Map"
+		, DialogData = "geometry_rd"
+		{
+			// attribute<ipoint>         geometry    (poly);
+			attribute<geometries/rdc> geometry_rd (poly) := geometry[geometries/rdc];
+		}
+	}
+
+	Template Tiled_datamerge
+	{
+		////
+		parameter<string>  corop_label;
+		parameter<string>  corop_name;
+		parameter<string>  src_data1;
+		parameter<string>  src_data2;
+		////
+
+		unit<uint32> Union_TerreinWegen := ='union_unit('+src_data1+'_tiled/'+corop_label+'/data_selectie, '+src_data2+'_tiled/'+corop_label+'/data_selectie)'
+		{
+			attribute<ipoint>    geometry_ipoint (poly) := ='union_data(.,' +src_data1+ '_tiled/' +corop_label+ '/data_selectie/geometry_ipoint,' +src_data2+ '_tiled/' +corop_label+ '/data_selectie/geometry_ipoint)';
+			parameter<ipoint>    union           (poly) := union_polygon(geometry_ipoint);
+		}
+	}
+
+	Template Tiled_dataselect
+	{
+		////
+		parameter<string>  corop_label;
+		parameter<string>  corop_name;
+		parameter<string>  src_data;
+		////
+		
+		unit<uint32> corop := Subset(corop_src/name == corop_name)
+		{
+			attribute<geometries/rdc>   geometry_rd (poly) := corop_src/geometry_rd[nr_OrgEntity];
+			
+			parameter<float32> x_min := min(pointCol(lower_bound(geometry_rd)));
+			parameter<float32> x_max := max(pointCol(upper_bound(geometry_rd)));
+			parameter<float32> y_min := min(pointRow(lower_bound(geometry_rd)));
+			parameter<float32> y_max := max(pointRow(upper_bound(geometry_rd)));
+				
+		}
+		
+		unit<uint32> data_selectie := = 'subset(   '+src_data+'_src/x_min >= corop/x_min
+												&& '+src_data+'_src/x_max <= corop/x_max
+												&& '+src_data+'_src/y_min >= corop/y_min
+												&& '+src_data+'_src/y_max <= corop/y_max)'
+		{
+			attribute<geometries/rdc>      geometry_rd (poly) := = src_data+'_src/geometry_rd[nr_OrgEntity]';
+			attribute<ipoint>              geometry_ipoint (poly) := geometry_rd[ipoint];
+		}
+	}
+
+	unit<uint32>     Corop_src             :=              Brondata/CBS/regios/corop/src_2012
+	{
+		attribute<geometries/rdc>   geometry_rd (polygon) := Brondata/CBS/regios/corop/src_2012/geometry;
+		attribute<string>           label                 := Brondata/CBS/regios/corop/src_2012/label;
+		attribute<string>           name                  := 'corop' + string(id(.)+1);
+		attribute<geometries/rdc>   lowerbound            := lower_bound(geometry_rd);
+		attribute<geometries/rdc>   upperbound            := upper_bound(geometry_rd);
+	}
+	
+	unit<uint32>     Voetgangerspaden_src  := subset(      Brondata/BRT/ReadFSS/LU/visualisatiecodes_rel == 87)  //voetgangersweg	
+	{
+		attribute<geometries/rdc>      geometry_rd (poly)    := Brondata/BRT/ReadFSS/LU/geometry_rd[nr_OrgEntity];
+		attribute<float32>             x_min                 := pointCol(lower_bound(geometry_rd));
+		attribute<float32>             x_max                 := pointCol(upper_bound(geometry_rd));
+		attribute<float32>             y_min                 := pointRow(lower_bound(geometry_rd));
+		attribute<float32>             y_max                 := pointRow(upper_bound(geometry_rd));
+	}
+	
+	unit<uint32>     Terrein_src           := subset(      Brondata/BRT/ReadFSS/LU/visualisatiecodes_rel == 150 //grasland
+														|| Brondata/BRT/ReadFSS/LU/visualisatiecodes_rel == 140 //gemengd bos
+														|| Brondata/BRT/ReadFSS/LU/visualisatiecodes_rel == 143 //loofbos
+														|| Brondata/BRT/ReadFSS/LU/visualisatiecodes_rel == 87) //voetgangersweg
+	{
+		attribute<geometries/rdc>      geometry_rd (poly)    := Brondata/BRT/ReadFSS/LU/geometry_rd[nr_OrgEntity];
+		attribute<float32>             x_min                 := pointCol(lower_bound(geometry_rd));
+		attribute<float32>             x_max                 := pointCol(upper_bound(geometry_rd));
+		attribute<float32>             y_min                 := pointRow(lower_bound(geometry_rd));
+		attribute<float32>             y_max                 := pointRow(upper_bound(geometry_rd));
+	}
+}

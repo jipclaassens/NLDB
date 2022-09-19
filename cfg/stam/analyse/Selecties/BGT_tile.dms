@@ -1,0 +1,135 @@
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2017                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met selectie BGT voor een tile                //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container BGT_tile
+{
+	unit<uint32> tile := Subset(Brondata/AHN/blad_index_src/unit == '21dz1')
+	{
+		attribute<geometries/rdc> geometry_rd (poly) := Brondata/AHN/blad_index_src/geometry_rd[nr_OrgEntity];
+		container bbox
+		{
+			
+			parameter<m> x_min := min(pointCol(lower_bound(geometry_rd))[m]);
+			parameter<m> x_max := max(pointCol(upper_bound(geometry_rd))[m]);
+			parameter<m> y_min := min(pointRow(lower_bound(geometry_rd))[m]);
+			parameter<m> y_max := max(pointRow(upper_bound(geometry_rd))[m]);
+		}
+	}
+
+	container grid_20m  := define_grid(20[m],20[m]  , tile/bbox);
+	container grid_5m   := define_grid( 5[m], 5[m]  , tile/bbox);
+	container grid_1m   := define_grid( 1[m], 1[m]  , tile/bbox);
+	container grid_50cm := define_grid( .5[m], .5[m], tile/bbox);
+
+	template define_grid
+	{
+		// begin case parameters
+		parameter<m> gridsizeX;
+		parameter<m> gridsizeY;
+		container bbox;
+		// end case parameters
+
+		parameter<int16> nr_cols := int16((bbox/x_max - bbox/x_min) / gridsizeX);
+		parameter<int16> nr_rows := int16((bbox/y_max - bbox/y_min) / gridsizeY);
+
+		unit<spoint> domain :=
+			range(
+				 gridset(
+					 geometries/rdc
+					,point(float32(gridsizeX), float32(-gridsizeY), geometries/rdc)
+					,point(bbox/x_min,bbox/y_max,geometries/rdc)
+					,spoint
+				)
+				,point(0s, 0s)
+				,point(nr_cols,nr_rows)
+			)
+		,	DialogData = "geometries/rdc"
+		{
+			attribute<.>        id              := id(.);
+			attribute<int16>    row             := PointRow(id);
+			attribute<int16>    col             := PointCol(id);
+		}
+	}
+	
+	unit<uint32> BGT_sel := overlay_polygon(ipolygon(Brondata/BGT/poly/alle/geometry_rd), ipolygon(tile/geometry_rd))
+	,	DialogType = "Map"
+	,	DialogData = "geometry_rd"
+	,	FreeData   = "False"
+	,	StorageName = "%LocalDataProjDir%/BGT_sel/t21dz1.dbf"
+	{
+		attribute<ipoint>                           geometry (poly)    : DisableStorage = "True";
+		attribute<geometries/rdc>                         geometry_rd (poly) := geometry[geometries/rdc], StorageName = "%LocalDataProjDir%/BGT_sel/t21dz1.shp";
+		attribute<Klassificaties/BGT/groepering>    groep              := Brondata/BGT/poly/alle/groepering_rel[first_rel];
+		attribute<Klassificaties/BGT/poly_type>     type               := Brondata/BGT/poly/alle/poly_type_rel[first_rel];
+		attribute<cm_int32>                         el_NAP             := int32(rnd_uniform(0, ., range(float32, -200f, 5200f))) * 1[cm_int32];
+		attribute<cm_int32>                         el_REL             := int32(rnd_uniform(0, ., range(float32, 0f, 1500f))) * 1[cm_int32];
+		attribute<cm_int32>                         sd                 := int32(rnd_uniform(1, ., range(float32, 0f, 1400f))) * 1[cm_int32];
+		attribute<Brondata/BGT/poly/alle>           first_rel          : DisableStorage = "True";
+		attribute<Analyses/selecties/BGT_tile/tile> second_rel         : DisableStorage = "True";
+
+	}
+	container grids
+	{
+		
+		unit<spoint> grid_50cm := BGT_tile/grid_50cm/domain
+		{
+			attribute<cm_int32> hoogte      := MakeDefined(Brondata/AHN/grids_cm/i_21dz1/GridData[cm_int32] - 10000[cm_int32], Brondata/AHN/grids_cm/r_21dz1/GridData[cm_int32] - 10000[cm_int32]);
+			attribute<cm_int32> hoogte_dtm  := Brondata/AHN/grids_cm/i_21dz1/GridData[cm_int32];
+			attribute<grid_5m>  grid_5m_rel := id(.)[grid_5m];
+		}
+
+		unit<spoint> grid_1m := BGT_tile/grid_1m/domain
+		{
+			attribute<BGT_sel> BGT_sel_rel  := poly2grid(BGT_sel/geometry_rd,.);
+			attribute<uint8>   groep        := uint8(BGT_sel/groep[BGT_sel_rel]), StorageName = "%LocalDataProjDir%/grid_1m/t21dz1_m1_clutter.tif";
+			attribute<grid_20m>grid_20m_rel := id(.)[grid_20m];
+		}
+
+		unit<spoint> grid_5m := BGT_tile/grid_5m/domain
+		{
+			attribute<cm_int32> hoogte                := mean(grid_50cm/hoogte    , grid_50cm/grid_5m_rel), StorageName = "%LocalDataProjDir%/grid_5m/t21dz1_m5_hoogte.tif";
+			attribute<cm_int32> hoogte_dtm            := mean(grid_50cm/hoogte_dtm, grid_50cm/grid_5m_rel);
+			
+			attribute<float32>  hoogte_dtm_pot_noemer := potential(float32(hoogte_dtm)             , Geografie/Distmatrices/pot150_5m/weight);
+			attribute<float32>  hoogte_dtm_pot_teller := potential(IsDefined(hoogte_dtm) ? 1f : 0f , Geografie/Distmatrices/pot150_5m/weight);
+			attribute<float32>  hoogte_dtm_pot        := hoogte_dtm_pot_noemer / hoogte_dtm_pot_teller;
+
+			attribute<float32>  hoogte_dtm_opgevuld_float32 := -100f + (0.01f * (isDefined(hoogte_dtm) ? float32(hoogte_dtm) : hoogte_dtm_pot))   , StorageName = "%LocalDataProjDir%/grid_5m/t21dz1_m5_hoogte_float32.tif";
+			attribute<int16>    hoogte_dtm_opgevuld_int16   := int16(-10000) + (isDefined(hoogte_dtm) ? int16(hoogte_dtm) : int16(hoogte_dtm_pot)), StorageName = "%LocalDataProjDir%/grid_5m/t21dz1_m5_hoogte_int16.tif";
+
+			container herinlezen
+			{
+				unit<spoint> hoogte_dtm_opgevuld_float32_lzw: StorageName = "%LocalDataProjDir%/grid_5m/LZW/t21dz1_m5_hoogte_float32.tif"
+				{
+					attribute<float32> GridData;
+				}
+				unit<spoint> hoogte_dtm_opgevuld_int16_lzw: StorageName = "%LocalDataProjDir%/grid_5m/LZW/t21dz1_m5_hoogte_int16.tif"
+				{
+					attribute<int16> GridData;
+				}
+				unit<spoint> hoogte_dtm_opgevuld_float32_none: StorageName = "%LocalDataProjDir%/grid_5m/none/t21dz1_m5_hoogte_float32.tif"
+				{
+					attribute<float32> GridData;
+				}
+				unit<spoint> hoogte_dtm_opgevuld_int16_none: StorageName = "%LocalDataProjDir%/grid_5m/none/t21dz1_m5_hoogte_int16.tif"
+				{
+					attribute<int16> GridData;
+				}
+
+			}
+		}
+		
+		unit<spoint> grid_20m := BGT_tile/grid_20m/domain
+		{
+			attribute<uint8> groep2 := modus(grid_1m/groep, grid_1m/grid_20m_rel), StorageName = "%LocalDataProjDir%/grid_20m/t21dz1_m20_clutter.tif";
+			
+		}
+	}
+}

@@ -1,0 +1,97 @@
+container LISA_bedrijfslocaties : using = "eenheden;geometries"
+{
+	unit<uint32> LISA_src := Brondata/LISA/LISA_combined
+	, FreeData = "false"
+	, DialogType = "map"
+	, DialogData = "geometry"
+	{
+		attribute<rdc>                            geometry           := Brondata/LISA/LISA_combined/geometry;
+		attribute<typeringen/LISA/SBI2008_sectie> sector_rel         := Brondata/LISA/LISA_combined/sector_rel;
+		attribute<.>                              pc6_rel            := Brondata/LISA/LISA_combined/pc6_rel;
+		attribute<float64>                        banen              := Brondata/LISA/LISA_combined/banen;
+		attribute<string>                         LISAnr             := Brondata/LISA/LISA_combined/LISAnr;
+		attribute<string>                         naam               := Brondata/LISA/LISA_combined/naam;
+		attribute<uint16>                         jaar               := Brondata/LISA/LISA_combined/jaar;
+	
+		unit<uint32>                              Locatie_uq         := unique(geometry);
+		unit<uint32>                              LISAnr_uq          := unique(LISAnr);
+
+		attribute<uint32>                         locatie_rel        := rlookup(geometry, Locatie_uq/values);
+		attribute<uint32>                         LISAnr_rel         := rlookup(LISAnr, LISAnr_uq/values);
+		attribute<upoint>                         LISAnr_locaties    := point(LISAnr_rel, locatie_rel, upoint);
+		
+		unit<uint32>                              LISAnr_locaties_uq := unique(LISAnr_locaties)
+		{
+			attribute<uint32>                     LISAnr_rel         := rjoin(values, ../LISAnr_locaties, ../LISAnr_rel);
+			attribute<uint32>                     locatie_rel        := rjoin(values, ../LISAnr_locaties, ../locatie_rel);
+			attribute<uint32>                     cum_LISAnr         := cumulate(const(1,.),LISAnr_rel);
+			attribute<uint32>                     sum_cum            := sum(cum_LISAnr, LISAnr_rel)[LISAnr_rel];
+		}
+		
+		unit<uint32> HasMoved_wrong_order := subset(LISAnr_locaties_uq/sum_cum >= 3)
+		, DialogType = "map"
+		, DialogData = "point"
+		{
+			attribute<upoint>                     LISAnr_locaties    := LISAnr_locaties_uq/values[nr_OrgEntity];
+			attribute<uint32>                     LISAnr_rel         := LISAnr_locaties_uq/LISAnr_rel[nr_OrgEntity];
+			attribute<upoint>                     LISAnr_jaar        := point(LISAnr_rel, ordinal_jaar[uint32], upoint);
+			attribute<uint32>                     locatie_rel        := LISAnr_locaties_uq/locatie_rel[nr_OrgEntity];
+			attribute<uint16>                     ordinal_jaar       := rjoin(LISAnr_locaties, LISA_src/LISAnr_locaties, LISA_src/jaar);
+			attribute<.>                          index_jaar         := index(LISAnr_jaar);
+		}
+		unit<uint32> HasMoved := range(uint32,0,#HasMoved_wrong_order)
+		, DialogType = "map"
+		, DialogData = "point"
+		{
+			attribute<.>                          index_jaar         := union_data(., HasMoved_wrong_order/index_jaar);
+
+			attribute<upoint>                     LISAnr_locaties    := HasMoved_wrong_order/LISAnr_locaties[index_jaar];
+			attribute<upoint>                     LISAnr_jaar        := HasMoved_wrong_order/LISAnr_jaar[index_jaar];
+			
+			attribute<uint32>                     LISAnr_rel         := HasMoved_wrong_order/LISAnr_rel[index_jaar];
+			attribute<uint32>                     locatie_rel        := HasMoved_wrong_order/locatie_rel[index_jaar];
+			
+			
+			attribute<rdc>                        point              := rjoin(locatie_rel, LISA_src/locatie_rel, LISA_src/geometry);
+			attribute<uint16>                     ordinal_jaar       := rjoin(LISAnr_locaties, LISA_src/LISAnr_locaties, LISA_src/jaar);
+			
+			attribute<uint32>                     ordinal            := cumulate(const(1,.),LISAnr_rel) - 1;
+
+		}		
+		unit<uint32> Moved_Businesses := unique(HasMoved/LISAnr_rel)
+		, DialogType = "map"
+		, DialogData = "line"
+		{	
+			attribute<uint32>   LISAnr_rel         := values;
+			attribute<rdc>      line (arc)         := points2sequence(HasMoved/point, HasMoved/LISAnr_rel, HasMoved/ordinal)[values];
+
+			attribute<string>   LISAnr             := LISAnr_uq/values[LISAnr_rel];
+			attribute<string>   naam               := rjoin(LISAnr, LISA_src/LISAnr, LISA_src/naam);
+			attribute<float64>  banen              := rjoin(LISAnr, LISA_src/LISAnr, LISA_src/banen);
+			
+			parameter<uint32> Selectie_LISAnr_rel := 979106;
+			unit<uint32> subset_paths := subset(LISAnr_rel == Selectie_LISAnr_rel)
+			{
+				attribute<uint32>   LISAnr_rel         := ../LISAnr_rel[nr_OrgEntity];
+				attribute<rdc>      line (arc)         := ../line[nr_OrgEntity];
+				attribute<string>   LISAnr             := ../LISAnr[nr_OrgEntity];
+				attribute<string>   naam               := ../naam[nr_OrgEntity];
+				attribute<float64>  banen              := ../banen[nr_OrgEntity];
+			}
+			unit<uint32> subset_points := subset(LISA_src/HasMoved/LISAnr_rel == Selectie_LISAnr_rel)
+			, DialogType = "map"
+			, DialogData = "point"
+			{
+				attribute<rdc>                        point              := LISA_src/HasMoved/point[nr_OrgEntity];
+				attribute<uint16>                     ordinal_jaar       := LISA_src/HasMoved/ordinal_jaar[nr_OrgEntity];
+				attribute<string>                     label              := string(ordinal_jaar);
+			}
+		}
+	}
+	
+	
+	
+
+
+
+}

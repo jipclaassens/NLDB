@@ -1,0 +1,45 @@
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                       Configuratie voor project: Open Data Analyse                 //
+//                                                                                    //
+//                              Object Vision 2013                                    //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                    //
+//                  Configuratiebestand met specifieke analyses voor projecten        //
+//                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////
+
+container BBG
+{
+
+	container pointset
+	{
+		unit<uint32> bbg2012        := Sequence2Points(Brondata/BBG/BBG_2012/geometry);
+	}
+	
+	unit<uint32> bbg2012 :=
+			Subset(
+				any(
+					   PointCol(pointset/bbg2012/point) >= X_min
+					&& PointCol(pointset/bbg2012/point) <= X_max
+					&& PointRow(pointset/bbg2012/point) >= Y_min
+					&& PointRow(pointset/bbg2012/point) <= Y_max
+					, pointset/bbg2012/SequenceNr
+				)
+			)
+	,	Storagename = "='%LocalDataDir%/' + gebiedsnaam  + '/bbg/BBG_2012.fss'"
+	,	DialogType  = "Map"
+	,	DialogData  = "geometry"
+	{
+		attribute<geometries/rdc>                 geometry(polygon) := Brondata/BBG/BBG_2012/geometry[nr_OrgEntity];
+		attribute<.>                              id                := id(.);
+		attribute<typeringen/bbg>                 type              := rlookup(Brondata/BBG/BBG_2012/bbg2012[nr_OrgEntity], typeringen/bbg/bbg_ek);
+		// attribute<typeringen/bbg>                 gg2012_src_rel    := type);
+
+		// attribute<string>                         omschrijving      := Brondata/BBG/BBG_2012/omschrijving[nr_OrgEntity]; 
+	}
+}
+
+
+

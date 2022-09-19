@@ -1,0 +1,348 @@
+container LISA : using = "geometries" 
+{ 
+	unit<uint32> provincies := Brondata/CBS/regios/provincies/src_2012;
+	unit<uint32> pc4        := Brondata/CBS/regios/Postcode_gebieden/Postcode4_punten;
+	unit<uint32> pc6        := Brondata/CBS/regios/Postcode_gebieden/Postcode6_punten;
+
+	// unit<uint32> jaren := range(uint32, 1996, 2019)
+	// {
+		// attribute<uint32> value        := id(.);
+		// attribute<string> name         := 'y' + string(id(.));
+		// attribute<bool>   IsLISA_Part1 := id(.) <= 2009;
+		// attribute<bool>   IsLISA_Part2 := id(.) >= 2010;
+		// attribute<string> unitlist     := 'LISA'+string(value)+'nw_pnt';
+	// }
+	
+	unit<uint32> jaren : nrofrows = 23
+	{
+		// attribute<uint32> value : [1996, 2000, 2004, 2008, 2012, 2012, 2016, 2018];
+		attribute<uint32> value : [1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018];
+		// attribute<uint32> value : [2012, 2012, 2016, 2018];
+		attribute<string> name  := 'y' + string(value);
+	}
+	unit<uint32> jaren_pl19 : nrofrows = 24
+	{
+		// attribute<uint32> value : [1996, 2000, 2004, 2008, 2012, 2012, 2016, 2018];
+		attribute<uint32> value : [1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019];
+		// attribute<uint32> value : [2012, 2012, 2016, 2018];
+		attribute<string> name  := 'y' + string(value);
+	}
+	
+	container GenerateFSS_allyears
+	{
+		unit<uint32> LISA_attributes := SubItem_PropValues(Brondata/LISA/MakeFSS/y1996/PerYear,'name');
+		
+		parameter<String> Generate1996 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y1996/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate1997 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y1997/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate1998 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y1998/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate1999 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y1999/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2000 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2000/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2001 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2001/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2002 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2002/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2003 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2003/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2004 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2004/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2005 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2005/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2006 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2006/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2007 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2007/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2008 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2008/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2009 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2009/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2010 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2010/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2011 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2011/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2012 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2012/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2013 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2013/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2014 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2014/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2015 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2015/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2016 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2016/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2017 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2017/PerYear/'+LISA_attributes/name, ';')";
+		parameter<String> Generate2018 := 'Ready',
+			ExplicitSuppliers = "=AsList('/Brondata/LISA/MakeFSS/y2018/PerYear/'+LISA_attributes/name, ';')";
+	}
+	
+	unit<uint32> READ_LISA_1996_2019
+	: StorageName     = "%SourceDataDir%/LISA/LISA_tm2019.gdb"
+	, StorageReadOnly = "True"
+	, StorageType     = "gdal2.vect"
+	{
+		unit<uint32> LISA2019_1996 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_1997 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_1998 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_1999 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2000 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2001 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2002 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2003 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2004 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2005 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2006 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2007 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2008 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2009 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2010 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2011 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2012 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2013 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2014 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2015 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2016 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2017 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2018 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+		unit<uint32> LISA2019_2019 {attribute<rdc> geometry;} // attribute<NL_grid/domain> NL_grid_domain_rel := geometry[NL_grid/domain]; attribute<typeringen/LISA/SBI2008_sectie> sectie_rel := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); attribute<.> pc6_rel := point_in_polygon(geometry, pc6/Geometry);}
+	}
+	
+	container MakeFSS := 
+		for_each_ne(
+			Jaren/name
+			,'MakeFSS_T('+string(Jaren/value)+')'
+		);
+		
+	container ReadFSS := 
+		for_each_ne(
+			jaren_pl19/name
+			,'ReadFSS_T('+string(jaren_pl19/value)+')'
+		);
+	
+	Template MakeFSS_T
+	{	
+		parameter<uint32> year;
+		parameter<string> path := year <= 2009
+									? 'READ_LISA_1996_2009' 
+									: 'READ_LISA_2010_2018';
+		unit<uint32> domain := =path;
+		
+		unit<uint32> PerYear := ='domain/LISA'+string(year)+'nw_pnt'
+		, StorageName = "='%LocalDataDir%/NLDB/LISA/LISA'+string(year)+'.fss'"
+		{
+			attribute<rdc>                            geometry    := ='domain/LISA'+string(year)+'nw_pnt/geometry'; 
+			attribute<float64>                        banen       := ='domain/LISA'+string(year)+'nw_pnt/BANEN';
+			attribute<string>                         LISAnr      := ='domain/LISA'+string(year)+'nw_pnt/LISANR';
+			attribute<string>                         naam        := ='domain/LISA'+string(year)+'nw_pnt/NAAM';
+			attribute<string>                         SECTIE      := ='domain/LISA'+string(year)+'nw_pnt/SECTIE';
+			
+			attribute<typeringen/LISA/SBI2008_sectie> sectie_rel  := rlookup(SECTIE, typeringen/LISA/SBI2008_sectie/Sectie_code); 
+			// attribute<.>                              gem_rel     := point_in_polygon(geometry, Brondata/CBS/regios/Gemeenten/gem_src/j2019/Geometry);
+			// attribute<string>                         GM_CODE     := /Brondata/CBS/regios/Gemeenten/gem_src/j2019/GM_CODE[gem_rel];
+			// attribute<string>                         GM_NAAM     := /Brondata/CBS/regios/Gemeenten/gem_src/j2019/label[gem_rel];
+			
+			attribute<string>                         postcode       := ='domain/LISA'+string(year)+'nw_pnt/postcode';
+			attribute<uint32>                         huisnummer     := ='domain/LISA'+string(year)+'nw_pnt/huisnr[uint32]';
+			attribute<string>                         plaats         := ='domain/LISA'+string(year)+'nw_pnt/plaats';
+			attribute<string>                         GRTKLAS        := ='domain/LISA'+string(year)+'nw_pnt/GRTKLAS';
+			attribute<string>                         BAGGDVO        := ='domain/LISA'+string(year)+'nw_pnt/BAGGDVO';
+			attribute<float32>                        BAG_opp        := ='domain/LISA'+string(year)+'nw_pnt/BAGOPPERVL[float32]';
+			attribute<string>                         sbi08          := ='domain/LISA'+string(year)+'nw_pnt/sbi08';
+		}
+	}
+	
+	Template ReadFSS_T
+	{	
+		parameter<uint32> year;
+		
+		unit<uint32> PerYear
+		: StorageName = "='%LocalDataDir%/NLDB/LISA/LISA'+string(year)+'.fss'"
+		, StorageReadOnly = "true"
+		, DialogType = "map"
+		, DialogData = "geometry"
+		{
+			attribute<rdc>                            geometry;
+			attribute<typeringen/LISA/SBI2008_sectie> sectie_rel;
+			attribute<uint32>                        banen;
+			attribute<string>                         LISAnr;
+			attribute<string>                         naam;
+			
+			parameter<string>                         test_str := 'Albert Heijn';
+			
+			
+			unit<uint32> sub := subset(regex_search(naam, test_str) == test_str)
+			{
+				attribute<string>  naam      := ../naam[nr_OrgEntity];
+				attribute<rdc>     geometry  := ../geometry[nr_OrgEntity];
+				attribute<float64> banen     := ../banen[nr_OrgEntity];
+
+			}
+			
+			attribute<.>                              prov_rel    := point_in_polygon(geometry, Brondata/CBS/regios/provincies/Read_2019_gml/Geometry);
+			attribute<string>                         postcode;
+			attribute<uint32>                         huisnummer;
+			attribute<string>                         plaats;
+			attribute<string>                         GRTKLAS;
+			attribute<string>                         BAGGDVO;
+			attribute<float32>                        BAG_opp;
+			attribute<string>                         sbi08;
+			
+			attribute<NL_grid/domain>                       NL_grid_domain_100m_rel                          := geometry[NL_grid/domain];
+			attribute<NL_grid/domain_500m>                  NL_grid_domain_500m_rel                          := geometry[NL_grid/domain_500m];
+			// attribute<NL_grid/domain_1000m>                 NL_grid_domain_1000m_rel                         := geometry[NL_grid/domain_1000m];
+			// attribute<NL_grid/domain_5000m>                 NL_grid_domain_5000m_rel                         := geometry[NL_grid/domain_5000m];
+			// attribute<NL_grid/domain_10000m>                NL_grid_domain_10000m_rel                        := geometry[NL_grid/domain_10000m];
+			// attribute<NL_grid/domain_50000m>                NL_grid_domain_50000m_rel                        := geometry[NL_grid/domain_50000m];
+			
+			attribute<uint32>                               sum_banen_per_grid_100m  (NL_grid/domain)   := sum(banen[uint32], NL_grid_domain_100m_rel);
+			attribute<uint32>                               HeeftBanen_grid_100m     (NL_grid/domain)   := sum_banen_per_grid_100m > 0 ? sum_banen_per_grid_100m : (0/0);
+			
+			attribute<uint32>                               sum_banen_per_grid_500m  (NL_grid/domain_500m)   := sum(banen[uint32], NL_grid_domain_500m_rel);
+			attribute<uint32>                               HeeftBanen_grid_500m     (NL_grid/domain_500m)   := sum_banen_per_grid_500m > 0 ? sum_banen_per_grid_500m : (0/0);
+			
+			// attribute<uint32>                               sum_banen_per_grid_1000m  (NL_grid/domain_1000m) := sum(banen[uint32], NL_grid_domain_1000m_rel);
+			// attribute<uint32>                               HeeftBanen_grid_1000m     (NL_grid/domain_1000m) := sum_banen_per_grid_1000m > 0 ? sum_banen_per_grid_1000m : (0/0);
+			
+			// attribute<uint32>                               sum_banen_per_grid_5000m  (NL_grid/domain_5000m) := sum(banen[uint32], NL_grid_domain_5000m_rel);
+			// attribute<uint32>                               HeeftBanen_grid_5000m     (NL_grid/domain_5000m) := sum_banen_per_grid_5000m > 0 ? sum_banen_per_grid_5000m : (0/0);
+			
+			// attribute<uint32>                               sum_banen_per_grid_10000m  (NL_grid/domain_10000m) := sum(banen[uint32], NL_grid_domain_10000m_rel);
+			// attribute<uint32>                               HeeftBanen_grid_10000m     (NL_grid/domain_10000m) := sum_banen_per_grid_10000m > 0 ? sum_banen_per_grid_10000m : (0/0);
+			
+			// attribute<uint32>                               sum_banen_per_grid_50000m  (NL_grid/domain_50000m) := sum(banen[uint32], NL_grid_domain_50000m_rel);
+			// attribute<uint32>                               HeeftBanen_grid_50000m     (NL_grid/domain_50000m) := sum_banen_per_grid_50000m > 0 ? sum_banen_per_grid_50000m : (0/0);
+			
+			parameter<string> Gridsize := Parameters/Advanced/Dest_location_scale;
+			
+			unit<uint32> HeeftBanen := ='subset(HeeftBanen_grid_'+Gridsize+' > 0)'
+			,	FreeData = "false"
+			{
+				attribute<uint32> nr_banen         := ='PerYear/sum_banen_per_grid_'+Gridsize+'[nr_OrgEntity]';
+				attribute<rdc>    geometry         := nr_OrgEntity[rdc];
+				attribute<rdc>    point            := geometry;
+				attribute<uint32> identificatie    := id(.);
+				attribute<string> id_name          := 'dest' + string(identificatie);
+				attribute<string> label            := id_name, DialogType = "LabelText";
+			} 
+			
+			
+		}
+	}
+	
+	unit<uint32> LISA_combined := ='union_unit('+AsItemList('ReadFSS/'+jaren/name+'/PerYear')+')'
+	, DialogType = "map"
+	, DialogData = "geometry"
+	{
+		attribute<rdc>                            geometry    := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/geometry')+')';
+		attribute<float32>                        x           := pointcol(geometry);
+		attribute<float32>                        y           := pointrow(geometry);
+		// attribute<typeringen/LISA/SBI2008_sectie> sector_rel  := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/sectie_rel')+')';
+		// attribute<.>                              pc6_rel     := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/pc6_rel')+')';
+		attribute<float64>                        banen       := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/banen')+')';
+		// attribute<string>                         LISAnr      := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/LISAnr')+')';
+		// attribute<string>                         naam        := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/naam')+')';
+		attribute<uint16>                         lisa_jaar   := ='union_data(.,'+AsItemList('const('+string(jaren/value)+'[uint16],ReadFSS/'+jaren/name+'/PerYear)')+')';
+		
+		attribute<string>                         postcode    := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/postcode')+')';
+		attribute<uint32>                         huisnummer  := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/huisnummer')+')';
+		attribute<string>                         plaats      := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/plaats')+')';
+		attribute<string>                         GRTKLAS     := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/GRTKLAS')+')';
+		attribute<string>                         BAGGDVO     := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/BAGGDVO')+')';
+		attribute<float32>                        BAG_opp     := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/BAG_opp')+')';
+		attribute<string>                         sbi08       := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/sbi08')+')';
+		attribute<string>                         sbi_sectie  := rjoin(sbi08, typeringen/LISA/SBI2008_tabel/sbi08, typeringen/LISA/SBI2008_tabel/SECTIE);
+		
+		attribute<string>                         GM_CODE     := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/GM_CODE')+')';
+		attribute<string>                         GM_NAAM     := ='union_data(.,'+AsItemList('ReadFSS/'+jaren/name+'/PerYear/GM_NAAM')+')';
+		
+		attribute<string>                         PC_huisnr   := postcode + '_' + string(huisnummer);
+	}
+	
+	
+	
+	unit<uint32> LISA2018
+	: StorageName = "%LocalDataDir%/NLDB/LISA/LISA2018.fss"
+	, StorageReadOnly = "true"
+	{
+		attribute<rdc>                            geometry;
+		attribute<typeringen/LISA/SBI2008_sectie> sectie_rel;
+		attribute<.>                              pc6_rel;
+		attribute<float64>                        banen;
+		attribute<string>                         LISAnr;
+		attribute<string>                         naam;
+		attribute<.>                              pc4_rel                         := point_in_polygon(geometry, pc4/Geometry);
+		attribute<float64>                        sum_banen_pc4 (pc4)             := sum(banen, pc4_rel);
+		attribute<NL_grid/domain>                 NL_grid_domain_rel              := geometry[NL_grid/domain];
+		attribute<uint32>                         banen_per_grid (NL_grid/domain) := sum(banen[uint32], NL_grid_domain_rel);
+		attribute<uint32>                         HeeftBanen_grid (NL_grid/domain):= banen_per_grid > 0 ? banen_per_grid : (0/0);
+		
+		attribute<.>                              HeeftBanen_grid_rel             := HeeftBanen_grid[NL_grid_domain_rel];
+		
+		unit<uint32> HeeftBanen := subset(HeeftBanen_grid > 0)
+		{
+			attribute<uint32> nr_banen  := ../banen_per_grid[nr_OrgEntity];
+			attribute<rdc>    geometry  := nr_OrgEntity[rdc];
+		}
+		
+		
+		unit<uint32> uq := unique(geometry);
+		
+		unit<uint32> sub := subset(LISAnr == 'AB110256325')
+		{
+			attribute<rdc>                            geometry    := ../geometry[nr_OrgEntity];
+			attribute<typeringen/LISA/SBI2008_sectie> sectie_rel  := ../sectie_rel[nr_OrgEntity];
+			attribute<.>                              pc6_rel     := ../pc6_rel[nr_OrgEntity];
+			attribute<float64>                        banen       := ../banen[nr_OrgEntity];
+			attribute<string>                         LISAnr      := ../LISAnr[nr_OrgEntity];
+			attribute<string>                         naam        := ../naam[nr_OrgEntity];
+		}
+	}
+	
+	container banen_per_grid := 
+		for_each_ne(
+			typeringen/LISA/SBI2008_sectie/name
+			, 'banen_per_sectie_grid('+string(id(typeringen/LISA/SBI2008_sectie))+')'
+		);
+	
+	template banen_per_sectie_grid
+	{
+		parameter<uint32> sectie_rel;
+		
+		container per_jaar := 
+			for_each_nedv(
+				jaren/name
+				, jaren/IsLISA_Part1 
+					? 'sum(READ_LISA_1996_2009/'+jaren/unitlist+'/sectie_rel == sectie_rel ? READ_LISA_1996_2009/'+jaren/unitlist+'/BANEN : 0d, READ_LISA_1996_2009/'+jaren/unitlist+'/NL_grid_domain_rel)'
+					: 'sum(READ_LISA_2010_2018/'+jaren/unitlist+'/sectie_rel == sectie_rel ? READ_LISA_2010_2018/'+jaren/unitlist+'/BANEN : 0d, READ_LISA_2010_2018/'+jaren/unitlist+'/NL_grid_domain_rel)'
+				, NL_grid/domain
+				, float64
+			);
+	}
+	
+	container banen_per_pc6 := 
+		for_each_ne(
+			typeringen/LISA/SBI2008_sectie/name
+			, 'banen_per_sectie_pc6('+string(id(typeringen/LISA/SBI2008_sectie))+')'
+		);
+	
+	template banen_per_sectie_pc6
+	{
+		parameter<uint32> sectie_rel;
+		
+		container per_jaar := 
+			for_each_nedv(
+				jaren/name
+				, jaren/IsLISA_Part1 
+					? 'sum(READ_LISA_1996_2009/'+jaren/unitlist+'/sectie_rel == sectie_rel ? READ_LISA_1996_2009/'+jaren/unitlist+'/BANEN : 0d, READ_LISA_1996_2009/'+jaren/unitlist+'/pc6_rel)'
+					: 'sum(READ_LISA_2010_2018/'+jaren/unitlist+'/sectie_rel == sectie_rel ? READ_LISA_2010_2018/'+jaren/unitlist+'/BANEN : 0d, READ_LISA_2010_2018/'+jaren/unitlist+'/pc6_rel)'
+				, pc6
+				, float64
+			);
+	}
+
+	
+}

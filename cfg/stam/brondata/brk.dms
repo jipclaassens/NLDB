@@ -1,0 +1,186 @@
+container BRK
+{
+	unit<uint32> Perceel 
+	:	StorageName     = "%SourceDataDir%/BRK/20190101/fss/perceel.fss"
+	,	StorageReadOnly = "True"
+	,	DialogType = "Map"
+	,	DialogData = "geometry"
+	{
+		attribute<geometries/rdc>      geometry (poly);
+		attribute<uint32>              AKRKADASTRALEGEMEENTECODE;
+		attribute<string>              CBSGemeentecode;
+		attribute<uint32>              PERCEELNUMMER;
+		attribute<uint32>              SECTIE;
+		
+		attribute<geometries/rdc>      centroid                  := centroid_or_mid(geometry);
+		attribute<NL_grid/domain>      NL_grid_domain_rel        := centroid[NL_grid/domain];
+		attribute<.>                   per_grid (NL_grid/domain_10m) := poly2grid(geometry, NL_grid/domain_10m);
+		
+		attribute<ipoint>              NL_grid_id_perceel_id  (NL_grid/domain)  := point(NL_grid/domain/identificatie[int32], per_grid[int32], ipoint);
+		
+		attribute<uint32>              count_perceel_per_grid (NL_grid/domain)  := pcount(Grid_Perceel_id_uq/grid_rel);
+		
+		
+		unit<uint32>                   Grid_Perceel_id_uq  := unique(NL_grid_id_perceel_id)
+		{
+			attribute<uint32>              grid_id    := pointcol(values)[uint32];
+			attribute<uint32>              perceel_id := pointrow(values)[uint32];
+			attribute<NL_grid/domain>  grid_rel   := rlookup(Grid_Perceel_id_uq/grid_id, NL_grid/domain/identificatie);
+		}
+		
+		
+		attribute<Perceel>             perceel_rel (BAG/Snapshots/Panden/pand_vbo)  := point_in_polygon(BAG/Snapshots/Panden/pand_vbo/centroid, geometry), FreeData = "False";
+		attribute<uint32>              count_pand                                       := pcount(perceel_rel), FreeData = "False";
+		
+		attribute<uint32>              count_Wonen                                    := sum(BAG/Snapshots/Panden/pand_vbo/count_Wonen, perceel_rel);
+		attribute<uint32>              count_RetHoreca                                := sum(BAG/Snapshots/Panden/pand_vbo/count_RetHoreca, perceel_rel);
+		attribute<uint32>              count_SocCulVz                                 := sum(BAG/Snapshots/Panden/pand_vbo/count_SocCulVz, perceel_rel);
+		attribute<uint32>              count_Bedrijven                                := sum(BAG/Snapshots/Panden/pand_vbo/count_Bedrijven, perceel_rel);
+		
+		attribute<typeringen/functie_klassen>  modus_argmax_functie                   := modus(BAG/Snapshots/Panden/pand_vbo/functie_argmax, perceel_rel)[typeringen/functie_klassen];
+		
+		attribute<typeringen/BBG>      pand_type                                      := modus(BAG/Snapshots/Panden/pand_vbo/type, perceel_rel);
+		
+		
+		attribute<m2>                  perceel_area                                   := abs(area(geometry, m2)), FreeData = "False";
+		attribute<m2>                  pand_area (BAG/Snapshots/Panden/pand_vbo)  := BAG/Snapshots/Panden/pand_vbo/pand_area, FreeData = "False";
+		attribute<m2>                  pand_area_op_perceel                           := sum(pand_area, perceel_rel), FreeData = "False";
+		attribute<float32>             fractie_pand_area_perceel                      := pand_area_op_perceel / perceel_area, FreeData = "False";
+		
+		unit<uint32>                   perceel_pandtype := subset(./fractie_pand_area_perceel >= 0.05f)
+		, 	FreeData = "False"
+		,	DialogType = "Map"
+		,	DialogData = "geometry"
+		{
+			attribute<geometries/rdc>              geometry (poly)                            := ../geometry[nr_OrgEntity];
+			attribute<typeringen/BBG>              pand_type                                  := ../pand_type[nr_OrgEntity];
+		}
+		
+		unit<uint32>                   perceel_woon := subset(
+																   Perceel/modus_argmax_functie == typeringen/functie_klassen/v/wonen 
+																&& Perceel/fractie_pand_area_perceel >= 0.05f
+															)
+		, 	FreeData = "False"
+		,	DialogType = "Map"
+		,	DialogData = "geometry"
+		{
+			attribute<geometries/rdc>      geometry (poly)                                 := Perceel/geometry[nr_OrgEntity];
+			attribute<uint32>              count_wonen                                     := Perceel/count_wonen[nr_OrgEntity];
+			attribute<uint32>              count_SocCulVz                                  := Perceel/count_SocCulVz[nr_OrgEntity];
+			attribute<uint32>              count_RetHoreca                                 := Perceel/count_RetHoreca[nr_OrgEntity];
+			attribute<uint32>              count_Bedrijven                                 := Perceel/count_Bedrijven[nr_OrgEntity];
+			attribute<m2>                  perceel_area                                    := Perceel/perceel_area[nr_OrgEntity];
+			attribute<m2>                  pand_area_op_perceel                            := Perceel/pand_area_op_perceel[nr_OrgEntity];
+			attribute<float32>             fractie_pand_area_perceel                       := Perceel/fractie_pand_area_perceel[nr_OrgEntity];
+			
+			attribute<bool>                grid_10m         (NL_grid/domain_10m)           := IsDefined(poly2grid(geometry, NL_grid/domain_10m));
+			attribute<float32>             fractie_bebouwd  (NL_grid/domain)               := sum(grid_10m ? 1f : 0f, NL_grid/domain_10m/grid_100m_rel)[float32] / 100f, StorageName = "%SourceDataDir%/LUMOS/Vastgoed/Percelen_fractie_bebouwd_wonen_Aug2018.tif";
+			attribute<bool>                Bebouwd_30proc   (NL_grid/domain)               := fractie_bebouwd >= 0.30f;
+		}
+		
+		unit<uint32>                   perceel_SocCulVz := subset(
+																   Perceel/modus_argmax_functie == typeringen/functie_klassen/v/SocCulVz 
+																	&& Perceel/fractie_pand_area_perceel >= 0.05f
+																)
+		, 	FreeData = "False"
+		,	DialogType = "Map"
+		,	DialogData = "geometry"
+		{
+			attribute<geometries/rdc>      geometry (poly)                                 := Perceel/geometry[nr_OrgEntity];
+			attribute<uint32>              count_wonen                                     := Perceel/count_wonen[nr_OrgEntity];
+			attribute<uint32>              count_SocCulVz                                  := Perceel/count_SocCulVz[nr_OrgEntity];
+			attribute<uint32>              count_RetHoreca                                 := Perceel/count_RetHoreca[nr_OrgEntity];
+			attribute<uint32>              count_Bedrijven                                 := Perceel/count_Bedrijven[nr_OrgEntity];
+			attribute<m2>                  perceel_area                                    := Perceel/perceel_area[nr_OrgEntity];
+			attribute<m2>                  pand_area_op_perceel                            := Perceel/pand_area_op_perceel[nr_OrgEntity];
+			attribute<float32>             fractie_pand_area_perceel                       := Perceel/fractie_pand_area_perceel[nr_OrgEntity];
+			
+			attribute<bool>                grid_10m         (NL_grid/domain_10m)           := IsDefined(poly2grid(geometry, NL_grid/domain_10m));
+			attribute<float32>             fractie_bebouwd  (NL_grid/domain)               := sum(grid_10m ? 1f : 0f, NL_grid/domain_10m/grid_100m_rel)[float32] / 100f, StorageName = "%SourceDataDir%/LUMOS/Vastgoed/Percelen_fractie_bebouwd_SocCulVz_Aug2018.tif";
+		}
+		
+		unit<uint32>                   perceel_RetHoreca := subset(
+																   Perceel/modus_argmax_functie == typeringen/functie_klassen/v/RetHoreca 
+																	&& Perceel/fractie_pand_area_perceel >= 0.05f
+																)
+		, 	FreeData = "False"
+		,	DialogType = "Map"
+		,	DialogData = "geometry"
+		{
+			attribute<geometries/rdc>      geometry (poly)                                 := Perceel/geometry[nr_OrgEntity];
+			attribute<uint32>              count_wonen                                     := Perceel/count_wonen[nr_OrgEntity];
+			attribute<uint32>              count_SocCulVz                                  := Perceel/count_SocCulVz[nr_OrgEntity];
+			attribute<uint32>              count_RetHoreca                                 := Perceel/count_RetHoreca[nr_OrgEntity];
+			attribute<uint32>              count_Bedrijven                                 := Perceel/count_Bedrijven[nr_OrgEntity];
+			attribute<m2>                  perceel_area                                    := Perceel/perceel_area[nr_OrgEntity];
+			attribute<m2>                  pand_area_op_perceel                            := Perceel/pand_area_op_perceel[nr_OrgEntity];
+			attribute<float32>             fractie_pand_area_perceel                       := Perceel/fractie_pand_area_perceel[nr_OrgEntity];
+			
+			attribute<bool>                grid_10m         (NL_grid/domain_10m)           := IsDefined(poly2grid(geometry, NL_grid/domain_10m));
+			attribute<float32>             fractie_bebouwd  (NL_grid/domain)               := sum(grid_10m ? 1f : 0f, NL_grid/domain_10m/grid_100m_rel)[float32] / 100f, StorageName = "%SourceDataDir%/LUMOS/Vastgoed/Percelen_fractie_bebouwd_RetHoreca_Aug2018.tif";
+		}
+		
+		unit<uint32>                   perceel_Bedrijven := subset(
+																   Perceel/modus_argmax_functie == typeringen/functie_klassen/v/Bedrijven 
+																	&& Perceel/fractie_pand_area_perceel >= 0.05f
+																)
+		, 	FreeData = "False"
+		,	DialogType = "Map"
+		,	DialogData = "geometry"
+		{
+			attribute<geometries/rdc>      geometry (poly)                                 := Perceel/geometry[nr_OrgEntity];
+			
+			unit<uint32> percelen_zonder_kassen := subset(!IsDefined(rlookup(id(perceel_Bedrijven), kassen_intersect/first_rel)))
+			{
+				attribute<geometries/rdc>  geometry_rd (poly) := ../geometry[nr_OrgEntity];
+			}
+			// attribute<bool>                percelen_zonder_kassen                          := !IsDefined(rlookup(id(perceel_Bedrijven), kassen_intersect/first_rel));
+			attribute<uint32>              count_wonen                                     := Perceel/count_wonen[nr_OrgEntity];
+			attribute<uint32>              count_SocCulVz                                  := Perceel/count_SocCulVz[nr_OrgEntity];
+			attribute<uint32>              count_RetHoreca                                 := Perceel/count_RetHoreca[nr_OrgEntity];
+			attribute<uint32>              count_Bedrijven                                 := Perceel/count_Bedrijven[nr_OrgEntity];
+			attribute<m2>                  perceel_area                                    := Perceel/perceel_area[nr_OrgEntity];
+			attribute<m2>                  pand_area_op_perceel                            := Perceel/pand_area_op_perceel[nr_OrgEntity];
+			attribute<float32>             fractie_pand_area_perceel                       := Perceel/fractie_pand_area_perceel[nr_OrgEntity];
+			
+			unit<uint32>                   kassen_intersect := overlay_polygon(geometry[ipoint], BRT/ReadFSS/MaakLosseCat/gebouwen_kas_warenhuis/vlak/geometry_rd[ipoint])
+			{
+				attribute<geometries/rdc>      geometry_rd (poly)                          := geometry[geometries/rdc];
+			}
+			
+			attribute<bool>                grid_10m         (NL_grid/domain_10m)           := IsDefined(poly2grid(percelen_zonder_kassen/geometry_rd, NL_grid/domain_10m));
+			attribute<float32>             fractie_bebouwd  (NL_grid/domain)               := sum(grid_10m ? 1f : 0f, NL_grid/domain_10m/grid_100m_rel)[float32] / 100f, StorageName = "%SourceDataDir%/LUMOS/Vastgoed/Percelen_fractie_bebouwd_bedrijven_Aug2018.tif";
+		}
+		
+		unit<uint32> Vliegvelden := subset(/Brondata/BBG/BBG_1996_2015/gg2015_src_rel == 3[uint8])
+		,	FreeData = "False"
+		{
+			attribute<geometries/rdc> geometry (poly)    := /Brondata/BBG/BBG_1996_2015/geometry_rd[nr_OrgEntity];
+			parameter<ipoint>         union    (poly)    := union_polygon(geometry[ipoint]);
+			parameter<ipoint>         inflate  (poly)    := polygon_i8D(union, 1000d);
+			parameter<ipoint>         deflate  (poly)    := polygon_d8D(inflate, 1000d);
+			parameter<geometries/rdc> deflate_rd  (poly) := deflate[geometries/rdc];
+			
+			unit<uint32> deflate_unit : nrofrows = 1
+			{
+				attribute<geometries/rdc> geometry_rd (poly)                  := union_data(., Vliegvelden/deflate)[geometries/rdc];
+				attribute<bool>         grid_10m (NL_grid/domain_10m) := IsDefined(poly2grid(geometry_rd, NL_grid/domain_10m));
+			}
+		}
+
+		attribute<bool>                totaal_percelen_bebouwd  (NL_grid/domain_10m)    := (perceel_woon/grid_10m || perceel_SocCulVz/grid_10m || perceel_RetHoreca/grid_10m || perceel_Bedrijven/grid_10m) && !Vliegvelden/deflate_unit/grid_10m;
+		attribute<float32>             totaal_fractie_bebouwd   (NL_grid/domain)        := sum(totaal_percelen_bebouwd ? 1f : 0f, NL_grid/domain_10m/grid_100m_rel)[float32] / 100f, StorageName = "%SourceDataDir%/LUMOS/Vastgoed/Percelen_fractie_bebouwd_totaal_KassenAirports_Aug2018.tif";
+
+		
+		// unit<uint32>                   perceel_met_vbo := subset(IsDefined(invert(Perceel/perceel_rel)))
+		// , FreeData = "False"
+		// ,	DialogType = "Map"
+		// ,	DialogData = "geometry"
+		// {
+			// attribute<geometries/rdc>      geometry (poly) := Perceel/geometry[nr_OrgEntity];
+			// attribute<uint32>              count_pand                                     := Perceel/count_pand[nr_OrgEntity];
+		// }
+	}
+	
+	
+}

@@ -1,0 +1,200 @@
+container Brondata:  using = "eenheden"
+{
+	#include <bag.dms>
+	#include <bbg.dms>
+	#include <bgt.dms>
+	#include <brk.dms>
+	#include <brt.dms>
+	#include <cbs.dms>
+	#include <ESDL.dms>
+	#include <lisa.dms>
+	#include <osm.dms>
+	#include <nvm.dms> 
+	#include <nwb.dms> 
+	#include <ndw.dms>
+	#include <sql.dms>
+	container Overig
+	{
+		attribute<uint32> read_BBG_Eric (NL_grid/domain_25m) : Storagename = "C:/Projects/TempEric/DataView/AmsterdamArea2015.tif", StorageReadOnly = "true", StorageType = "gdal.grid";
+		
+		attribute<uint32> Dist_HighwayExit_1991 (NL_grid/domain)
+		:	StorageName     = "%SourceDataDir%/SpatialData/DistTo_Motorway_exits_1991.tif"
+		,	StorageType     = "gdal.grid"
+		,	StorageReadOnly = "True";
+		
+		attribute<uint32> DistTo_100000inhabitants_2004 (NL_grid/domain)
+		:	StorageName     = "%SourceDataDir%/SpatialData/DistTo_100000inhabitants_2004.tif"
+		,	StorageType     = "gdal.grid"
+		,	StorageReadOnly = "True";
+		
+		attribute<float32> UAI_5000m_dcsq (NL_grid/domain)
+		:	StorageName     = "%SourceDataDir%/SpatialData/UAI/UAI_5000m_dcsq.tif"
+		,	StorageType     = "gdal.grid"
+		,	StorageReadOnly = "True";
+		
+		unit<uint32> AllAirports_2019_BRT
+		:  StorageName = "%SourceDataDir%/Overig/AllAirports_2019_BRT.shp"
+		,  StorageType = "gdal.vect"
+		,	StorageReadOnly = "True"
+		{
+			attribute<geometries/rdc> 	geometry (polygon);
+			parameter<geometries/rdc_mm> union (poly) := union_polygon(geometry[geometries/rdc_mm]);
+			
+			unit<uint32> Unioned : nrofrows = 1
+			{
+				attribute<geometries/rdc_mm> geometry (poly) := union_data(., ../union);
+			}
+			
+			unit<uint32> Multi_to_singlepart_polygons := split_polygon(Unioned/geometry)
+			, FreeData = "False"
+			{
+				attribute<geometries/rdc> geometry_rd (poly) := geometry[geometries/rdc];
+			}
+			
+			unit<uint32> Top5_Airports := subset(id(Multi_to_singlepart_polygons) == 33 || id(Multi_to_singlepart_polygons) == 21 || id(Multi_to_singlepart_polygons) == 49 || id(Multi_to_singlepart_polygons) == 108 || id(Multi_to_singlepart_polygons) == 74)
+			{
+				attribute<geometries/rdc> 	geometry (poly) := Multi_to_singlepart_polygons/geometry_rd[nr_OrgEntity];
+				
+				container DistanceTo
+				{
+					unit<uint32>      segments                    := arc2segm(../geometry);
+					unit<uint32>      pointset                    := dyna_point(segments/point, segments/nextpoint, value(100, m)), DialogType = "Map", DialogData = "point"
+					{
+						attribute<NL_grid/domain> grid_rel        := point[NL_grid/domain];
+					}
+					attribute<m>      DistTo (NL_grid/domain)     := GridDist(resistance, pointset/grid_rel, const(0, pointset, m));
+					attribute<m>      resistance (NL_grid/domain) := const(100,NL_grid/domain,m);
+				}
+			}
+		}
+		
+		unit<uint32> Amsterdam_Stadsdelen
+		:  StorageName = "%SourceDataDir%/Overig/Regios_amsterdam/stadsdelen_2010.shp"
+		,  StorageType = "gdal.vect"
+		,	StorageReadOnly = "True"
+		{
+			attribute<geometries/rdc> 	geometry (polygon);	
+			attribute<string>           Stadsdeeln;
+			attribute<string>           Label := Stadsdeeln;
+			attribute<uint8>            sdnummer;
+			attribute<uint32>           Stadsdeelnummer                                 := sdnummer[uint32];
+		}
+		
+		unit<uint32> Amsterdam_Stadsdelen_Bewoond
+		:  StorageName = "%SourceDataDir%/Overig/Regios_amsterdam/stadsdelen_bewoond_2009.shp"
+		,  StorageType = "gdal.vect"
+		,	StorageReadOnly = "True"
+		{
+			attribute<geometries/rdc> 	geometry (polygon);	
+			attribute<string>           BCNAAM;
+			attribute<string>           Label := BCNAAM;
+		}
+	
+		unit<uint32> Basisscholen
+		:  StorageName = "%SourceDataDir%/Overig/Scholen/scholen_met_xy_20180625.csv"
+		,  StorageType = "gdal.vect"
+		,  StorageReadOnly = "True" 
+		,  FreeData = "False"
+		,  SyncMode = "none" 
+		{
+			attribute<string> x;
+			attribute<string> y;
+			attribute<geometries/rdc>  geometry := point(x[float32], y[float32], geometries/rdc);
+			attribute<NL_grid/domain>                   NL_grid_domain_rel             := geometry[NL_grid/domain];
+			
+			unit<uint32> Basisscholen_defined := subset(Isdefined(Basisscholen/geometry))
+			{
+				attribute<geometries/rdc>  geometry                := Basisscholen/geometry[nr_OrgEntity];
+				attribute<NL_grid/domain>  NL_grid_domain_rel      := geometry[NL_grid/domain];
+				attribute<.>               AMS_rel                 := point_in_polygon(geometry, Brondata/CBS/regios/grootstedelijke_agglomeratie/src_2012/Amsterdam/Geometry);
+				
+				unit<uint32> Subset_AMS := subset(IsDefined(AMS_rel))
+				{
+					attribute<geometries/rdc>  geometry := ../geometry[nr_OrgEntity];
+					
+					unit<uint32> uq := unique(geometry)
+					, StorageName = "%SourceDataDir%/Overig/Scholen/Basisscholen_Amsterdam.fss"
+					{
+						attribute<geometries/rdc> values;
+						attribute<geometries/rdc> geometry := values;
+					}
+				}
+			}
+		}
+		
+		unit<uint32> pand_2018_hoogte
+		:	StorageName     = "%SourceDataDir%/AHN/PHN_20181001.fss"
+		,	StorageReadOnly = "True"
+		,	DialogType = "map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<fpoint>                       geometry (polygon);
+			attribute<geometries/rdc>               geometry_rd (polygon) := geometry[geometries/rdc];
+			attribute<string>                       identificatie;
+			attribute<string>                       AHN_inwinjaar;
+			attribute<bool>                         IsAHN2;
+			attribute<bool>                         IsAHN3;
+			attribute<uint16>                       hoogte;
+			attribute<float32>                      hoogte_maaiveld;
+			attribute<uint16>                       hoogte_nok;
+		}
+		unit<uint32> pand_2020_hoogte
+		:	StorageName     = "%SourceDataDir%/AHN/PHN_20200101.fss"
+		,	StorageReadOnly = "True"
+		,	DialogType = "map"
+		,	DialogData = "geometry_rd"
+		{
+			attribute<fpoint>                       geometry (polygon);
+			attribute<geometries/rdc>               geometry_rd (polygon) := geometry[geometries/rdc];
+			attribute<string>                       identificatie;
+			attribute<string>                       AHN_inwinjaar;
+			attribute<bool>                         IsAHN2;
+			attribute<bool>                         IsAHN3;
+			attribute<uint16>                       hoogte;
+			attribute<float32>                      hoogte_maaiveld;
+			attribute<uint16>                       hoogte_nok;
+		}
+		
+		unit<uint32> NS_stations
+		:	StorageName     = "%SourceDataDir%/SpatialData/NS_Stations_2019_RD.shp"
+		,	StorageType     = "gdal.vect"
+		,	StorageReadOnly = "True"
+		,	SyncMode = "none"
+		{
+			attribute<geometries/rdc>            geometry;
+			attribute<string>                    Land;
+			attribute<string>                    lang;
+			attribute<string>                    Type_;
+			attribute<string>                    type      := (Type_ == 'knooppuntIntercitystation' || Type_ == 'intercitystation' || Type_ == 'megastation')
+																? 'IC'
+																: (Type_ == 'knooppuntSneltreinstation' || Type_ == 'sneltreinstation')
+																	? 'ST'
+																	: (Type_ == 'knooppuntStoptreinstation' || Type_ == 'stoptreinstation')
+																		? 'SPR'
+																		: 'Anders';
+			unit<uint32> uq := unique(Type_);
+			
+			unit<uint32> IC := subset(type == 'IC' && Land == 'NL')
+			, StorageName = "%SourceDataDir%/SpatialData/IC_Stations_2019.fss"
+			, DialogData = "geometry"
+			, DialogType = "map"
+			{
+				attribute<geometries/rdc>     geometry := ../geometry[nr_OrgEntity];
+				attribute<string>             label    := ../lang[nr_OrgEntity];
+			}
+		}
+		
+	}
+
+	unit<uint32> Population := union_unit(/Brondata/CBS/CBS_vierkanten/V2020/points/HeeftInwoners, /Brondata/CBS/CBS_vierkanten/Populatie_BuitenNL/Belgie/V2020, /Brondata/CBS/Regios/Postcode_gebieden/German_PC5_areas)
+	{
+		attribute<geometries/rdc>    geometry := union_data(., /Brondata/CBS/CBS_vierkanten/V2020/points/HeeftInwoners/geometry, /Brondata/CBS/CBS_vierkanten/Populatie_BuitenNL/Belgie/V2020/centroid, /Brondata/CBS/Regios/Postcode_gebieden/German_PC5_areas/point);
+		attribute<uint32>            pop      := union_data(., /Brondata/CBS/CBS_vierkanten/V2020/points/HeeftInwoners/nr_inwoners[uint32], /Brondata/CBS/CBS_vierkanten/Populatie_BuitenNL/Belgie/V2020/ms_pop[uint32], /Brondata/CBS/Regios/Postcode_gebieden/German_PC5_areas/population[uint32]);
+	
+		unit<uint32> HasPop := subset(pop > 0)
+		{
+			attribute<geometries/rdc>    geometry := ../geometry[nr_OrgEntity];
+			attribute<uint32>            pop      := ../pop[nr_OrgEntity];
+		}
+	}
+}
